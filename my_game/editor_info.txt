@@ -1,0 +1,38 @@
+Number codes for the tiles for the editor
+General info:
+    1 tile = 50px
+    The window is 1800x1050 px
+    or 36x21 tiles
+
+
+Platform: 10000
+Jump pad: 20000
+Powerup spawn: 30000
+
+Player 1 spawn: 41000
+Player 2 spawn: 42000
+
+Moving block: 5_____
+    Direction = second digit
+        1 = up
+        2 = right
+        3 = down
+        4 = left
+    Tiles to move = 3rd digit
+    Speed in px/tick = 4th and 5th digit
+        60 ticks/second
+        If using a 1 digit number, put a 0 in front
+        
+    Example moving block: 52302
+    2nd digit is direction, 2 = right
+    3rd digit is amount of tiles to move, so 3 tiles
+    4th and 5th digit is speed in px/tick, so 2px/tick
+
+Portals:
+    Portal 1: 71
+    Portal 2: 72
+    Portal 3: 73
+    Portal 4: 74
+
+    Only put 4 portals, no more no less. Only 1 of each
+    Portal 1 and 2 link, portal 3 and 4 link.
