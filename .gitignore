@@ -1,3 +1,4 @@
 .venv/*
 personal/*
 test.py
+wordle_data.json
