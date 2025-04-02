@@ -13,5 +13,5 @@ soup = BeautifulSoup(html_content, "html.parser")
 
 
 
-things = soup.find("span", class_="CurrentConditions--tempValue--zUBSz")
+things = soup.find("div", class_="CurrentConditions--tempValue--zUBSz")
 print(things.text)
