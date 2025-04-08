@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+
+
+<html>
+
+    <head>
+        <title>Dhruv's PCs</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            .animated-gradient-1 {
+                background: linear-gradient(to top right, oklch(0.789 0.154 211.53), oklch(0.541 0.281 293.009), oklch(0.789 0.154 211.53), oklch(0.541 0.281 293.009));
+                background-size: 300% 100%; 
+                animation: fadeIn 2s ease-in-out, gradientAnimation 5s linear infinite alternate; 
+            }
+
+            @keyframes gradientAnimation {
+                0% {
+                    background-position: 0% 0%;
+                }
+
+                100% {
+                    background-position: 100% 100%;
+                }
+            }
+
+            @keyframes fadeIn {
+                0% {
+                    opacity: 0;
+                }
+                100% {
+                    opacity: 1;
+                }
+            }
+
+            .text-gradient-1{
+                background-image: linear-gradient(to right, oklch(0.266 0.065 152.934), oklch(0.283 0.141 291.089));
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                color: transparent;
+            }
+
+            body {
+                background-image: url('website_background.png');
+                background-size: auto;
+                background-repeat: repeat;
+                min-height: 100vh;
+            }
+
+        </style>
+    </head>
+
+    <body class="bg-gray-900">
+        <div class="p-8">
+            <div class="animated-gradient-1 w-full pt-40 rounded-xl h-96">
+                <div>
+                    <h1 class="text-6xl text-center text-gradient-1">
+                        Dhruv's PCs
+                    </h1>
+                </div>
+            </div>
+            <div>
+                <h2 class="text-violet-400 text-center text-4xl pt-32">Need a PC? You've come to the right place.</h2>
+                <h2 class="text-violet-400 text-center text-3xl pt-4">↓ Start by filling out the form ↓</h2>
+                <div class="flex justify-center mt-10">
+                    <div class="flex justify-center w-[680px] h-[1400px] bg-slate-800 rounded-xl p-4">
+                        <iframe 
+                            class ="text-center" src="https://docs.google.com/forms/d/e/1FAIpQLSeBhZe9vsDi659SHZZ8WGrVTXY1l5YVTdrMBJetX4LDOcdaiA/viewform?embedded=true" 
+                            width="800" height="1200" frameborder="0" marginheight="0" marginwidth="0">Loading…
+                        </iframe>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        
+
+
+    </body>
+
+
+</html>
