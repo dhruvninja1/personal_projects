@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+
+
+<html>
+
+    <head>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css" />
+        <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
+        <title>CS project</title>
+
+        <script src="https://cdn.tailwindcss.com">
+        </script>
+
+
+    </head>
+
+    
+
+    <body class="bg-gray-900">
+        <div class="p-8">
+            <div class="animated-gradient-1 w-full pt-40 rounded-xl h-96">
+                <div class="pb-4">
+                    <h1 class="text-6xl text-center text-gradient-1">
+                        <span class="text-slate-600">&lt;</span>
+                        <span class="text-blue-600">h1</span>
+                        <span class="text-sky-600">class</span>
+                        =
+                        <span class="text-amber-700">&quot;text-red-500&quot;</span>
+                        <span class="text-slate-600">&gt;</span>
+                        <span class="text-red-600">My favorite things</span>
+                        <span class="text-slate-600">&lt;/h1&gt;</span>
+
+                    </h1>
+                </div>
+                    
+                <div class="flex justify-center text-3xl">
+                    <h2 class="4xl">-dhruv</h2>
+                </div>
+            </div>
+        </div>
+        <div class="pl-[300px] pr-[300px] pt-8">
+            <sl-carousel navigation loop>
+                <sl-carousel-item class="">
+                    Test
+                </sl-carousel-item>
+                <sl-carousel-item class="">
+                    Test
+                </sl-carousel-item>
+
+            </sl-carousel>
+
+        </div>
+        
+
+
+          
+          <script>
+          </script>
+
+          <style>
+                body {
+                    background-image: url('website_background.png');
+                    background-size: auto;
+                    background-repeat: repeat;
+                    min-height: 100vh;
+                }
+
+                .animated-gradient-1 {
+                    background: linear-gradient(to top right, oklch(74.6% 0.16 232.661), oklch(71.4% 0.203 305.504), oklch(74.6% 0.16 232.661), oklch(71.4% 0.203 305.504));
+                    background-size: 300% 100%; 
+                    animation: fadeIn 2s ease-in-out, gradientAnimation 5s linear infinite alternate; 
+                }
+
+                @keyframes gradientAnimation {
+                    0% {
+                        background-position: 0% 0%;
+                    }
+
+                    100% {
+                        background-position: 100% 100%;
+                    }
+                }
+
+                @keyframes fadeIn {
+                    0% {
+                        opacity: 0;
+                    }
+                    100% {
+                        opacity: 1;
+                    }
+                }
+
+
+
+                sl-carousel::part(base) {
+                    border-radius: 1rem;
+                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+                    padding: 1rem;
+                }
+
+                    
+                sl-carousel::part(scroll-container) {
+                    background-color: deepskyblue;
+                    border-radius: 0.75rem;
+                }
+                sl-carousel::part(navigation-button) {
+                    color: palevioletred;
+                    transition: transform 0.2s ease;
+
+
+                }
+
+                sl-carousel::part(navigation-button):hover {
+                    transform: scale(1.2);
+                }  
+
+          </style>
+
+
+
+    </body>
+
+
+</html>
