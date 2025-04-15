@@ -126,13 +126,12 @@
 
 
 
-
-                sl-carousel::part(base) {
-                    border-radius: 1rem;
-                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-                    padding: 1rem;
+                sl-tab:not([active])::part(base) {
+                    color: oklch(82.8% 0.111 230.318);
                 }
-
+                sl-tab:hover:not([active])::part(base) {
+                    color: oklch(68.5% 0.169 237.323);
+                }
                     
             
 
