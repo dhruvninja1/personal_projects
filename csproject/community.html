@@ -39,7 +39,7 @@
             </div>
         </div>
 
-            <div class="pl-[300px] pr-[300px] pt-8">
+            <div class="pl-[300px] pr-[300px] pt-8 pb-16 detail-group">
                 <sl-details class="text-4xl mt-4" summary="Things that I appreciate in the community">
                     <sl-icon name="plus-square" slot="expand-icon"></sl-icon>
                     <sl-icon name="dash-square" slot="collapse-icon"></sl-icon>
@@ -135,8 +135,14 @@
 
 
           
-          <script>
-          </script>
+            <script>
+                const container = document.querySelector('.detail-group');
+                container.addEventListener('sl-show', event => {
+                    if (event.target.localName === 'sl-details') {
+                        [...container.querySelectorAll('sl-details')].map(details => (details.open = event.target === details));
+                    }
+                });
+            </script>
 
           <style>
                 body {
@@ -169,6 +175,10 @@
                     100% {
                         opacity: 1;
                     }
+                }
+
+                sl-details:hover::part(summary){
+                    color:oklch(37.9% 0.146 265.522);
                 }
     
                    

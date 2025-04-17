@@ -39,7 +39,7 @@
             </div>
         </div>
 
-        <div class="pl-[300px] pr-[300px] pt-8">
+        <div class="pl-[300px] pr-[300px] pt-8 pb-16 detail-group">
             <sl-details class="text-4xl  mt-4" summary="Health">
                 <sl-icon name="plus-square" slot="expand-icon"></sl-icon>
                 <sl-icon name="dash-square" slot="collapse-icon"></sl-icon>
@@ -181,6 +181,14 @@
 
         </div>
 
+        <script>
+            const container = document.querySelector('.detail-group');
+            container.addEventListener('sl-show', event => {
+                if (event.target.localName === 'sl-details') {
+                    [...container.querySelectorAll('sl-details')].map(details => (details.open = event.target === details));
+                }
+            });
+        </script>
 
 
 
@@ -191,7 +199,6 @@
                 background-repeat: repeat;
                 min-height: 100vh;
             }
-
             .animated-gradient-1 {
                 background: linear-gradient(to top right, oklch(74.6% 0.16 232.661), oklch(71.4% 0.203 305.504), oklch(74.6% 0.16 232.661), oklch(71.4% 0.203 305.504));
                 background-size: 300% 100%; 
