@@ -1,5 +1,77 @@
 import math
 
+def bubblesort(lst):
+    n = len(lst)
+    swapped=False
+    for i in range(n-1):
+        swapped = False
+        for j in range(n-1-i):
+            if lst[j] > lst[j+1]:
+                lst[j], lst[j+1] = lst[j+1], lst[j]
+                swapped=True
+        if not swapped:
+            break
+    return(lst)
+
+def selectionsort(lst):
+    n=len(lst)
+    for i in range(n-1):
+        pmin=i
+        for j in range(i+1, n):
+            if lst[j] < lst[pmin]:
+                pmin=j
+        lst[i], lst[pmin] = lst[pmin], lst[i]
+
+    return(lst)
+
+
+def insertionsort(lst):
+    n=len(lst)
+    for i in range(1, n):
+        key=lst[i]
+        j=i-1
+        while j >= 0 and key < lst[j]:
+            lst[j+1]=lst[j]
+            j -=1
+        lst[j+1] = key
+    return lst
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def is_whole(input):

@@ -3,6 +3,10 @@ import random
 import enchant
 from assets.variables_for_wordle import *
 import json
+
+
+
+
 dictionary = enchant.Dict("en_Us")
 root = tk.Tk()
 root.title("Wordle")
