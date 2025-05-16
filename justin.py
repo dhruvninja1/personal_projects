@@ -1,4 +1,5 @@
 import subprocess
+import sys, os
 
 def run_command(command):
     """Executes a shell command and returns its output, error, and return code."""
@@ -55,9 +56,11 @@ def on_press(key):
         if key.char == "`":
             running = not running
             print(f'running: {running}')
-        
     except:
+        print("error")
         pass
+    if key.char == "]":
+        sys.exit("script terminated")
     
 
 def main():
