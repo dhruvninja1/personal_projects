@@ -1,3 +1,4 @@
+
 import pygame
 import random
 
@@ -66,9 +67,9 @@ def move_snake(snake, direction, size):
     :return: Nothing to return, just move the snake.
     """
 
-    for x in range(0, len(snake)):
-        tup = (snake[x][0] + direction[0], snake[x][1] + direction[1])
-        snake[x] = tup
+    tup = (snake[len(snake)-1][0] + direction[0], snake[len(snake)-1][1] + direction[1])
+    snake.append(tup)
+    snake.pop(0)
 
 def hit_apple(apple, snake):
     """
@@ -79,7 +80,11 @@ def hit_apple(apple, snake):
     :param snake: A list of tuples representing the (x, y) position of each body piece.
     :return: Return True if there is a collision, or False if there is not.
     """
-    return False
+
+    if snake[len(snake)-1] == apple:
+        return True
+    else:
+        return False
 
 
 def move_apple(snake, size):
@@ -90,7 +95,13 @@ def move_apple(snake, size):
     :param snake: A list of tuples representing the (x, y) position of each body piece.
     :return: Return a tuple (x, y) which will be the new position of the apple.
     """
-    return 0, 0
+
+    testx = random.randint(0, size-1)
+    testy = random.randint(0, size-1)
+    while (testx, testy) in snake:
+        test = random.randint(0, size-1)
+
+    return (testx, testy)
 
 
 def self_collision(snake):
@@ -102,6 +113,10 @@ def self_collision(snake):
     :return: Return True if there is a self collision, or False if not.
     """
     
+    if snake[len(snake)-1] in snake[:-2]:
+        return True
+    else:
+        return False
 
 
 
@@ -151,7 +166,9 @@ while True:
     if hit_apple(apple, snake):
         score += 1
         print('Score: %d' % score)
+        snake.append(apple)
         apple = move_apple(snake, SIZE)
+        
     else:
         pass
         # what should we do if we don't hit the apple?
