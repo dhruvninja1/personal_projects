@@ -1,5 +1,3 @@
-#define DEBUG 1
-
 #include <iostream>
 #include <string>
 #include <cstring>
@@ -21,8 +19,25 @@ const string COLOR_BLUE = "\033[34m";
 const string COLOR_MAGENTA = "\033[35m";
 const string COLOR_LIGHT_RED = "\033[91m";     // Light red for leave messages
 const string COLOR_LIGHT_GREEN = "\033[92m";   // Light green for join messages
+const string COLOR_RED = "\033[31m";           // Red for admin notifications
+const string COLOR_BOLD_YELLOW = "\033[1;33m"; // Bold yellow for admin status
 
-// emoji shi
+bool is_admin = false;
+string encryption_key; // Will store admin password for encryption
+
+// XOR encryption/decryption using admin password as key
+string encrypt_message(const string& message, const string& key) {
+    string encrypted = message;
+    for (size_t i = 0; i < message.length(); ++i) {
+        encrypted[i] = message[i] ^ key[i % key.length()];
+    }
+    return encrypted;
+}
+
+string decrypt_message(const string& encrypted, const string& key) {
+    // XOR is symmetric, so decryption is the same as encryption
+    return encrypt_message(encrypted, key);
+}
 
 // Function to handle sending and receiving messages after successful authentication.
 void chat_with_server(int client_socket, const string& username) {
@@ -30,6 +45,11 @@ void chat_with_server(int client_socket, const string& username) {
     char buffer[1024] = {0};
 
     cout << "Authentication successful! You can now send messages." << endl;
+    if (is_admin) {
+        cout << COLOR_BOLD_YELLOW << "You are logged in as an ADMIN!" << COLOR_RESET << endl;
+        cout << "Admin commands: admin.mute <username>, admin.kick <username>, admin.unmute <username>" << endl;
+    }
+    cout << "Messages are automatically encrypted for secure communication!" << endl;
     cout << "Type a message and press Enter. To exit, type 'cmd.exit'." << endl;
     cout << COLOR_MAGENTA << "You >> " << COLOR_RESET << flush; // Initial prompt
 
@@ -52,9 +72,21 @@ void chat_with_server(int client_socket, const string& username) {
             else if (current_input == "cmd.sybau"){
                 current_input = "Sybau 💔🥀";
             }
-            // Format message with username
-            string formatted_message = username + " - " + current_input;
-            send(client_socket, formatted_message.c_str(), formatted_message.length(), 0);
+            
+            string message_to_send;
+            
+            // Check if it's an admin command (send as-is, don't format with username)
+            if (is_admin && current_input.find("admin.") == 0) {
+                message_to_send = current_input;
+            } else {
+                // Format regular message with username
+                message_to_send = username + " - " + current_input;
+            }
+            
+            // Encrypt the message before sending
+            string encrypted_message = encrypt_message(message_to_send, encryption_key);
+            send(client_socket, encrypted_message.c_str(), encrypted_message.length(), 0);
+            
             cout << COLOR_MAGENTA << "You >> " << COLOR_RESET << flush; // Show prompt for next message
         }
 
@@ -62,25 +94,65 @@ void chat_with_server(int client_socket, const string& username) {
             memset(buffer, 0, sizeof(buffer));
             ssize_t bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
             if (bytes_received > 0) {
-                string received_message(buffer, bytes_received);
+                string encrypted_message(buffer, bytes_received);
+                
+                // Decrypt the received message
+                string received_message = decrypt_message(encrypted_message, encryption_key);
                 
                 // Clear the current prompt line
                 cout << "\r\033[K"; // Move to beginning of line and clear it
                 
+                // Handle special admin messages
+                if (received_message.find("ADMIN_MUTE:") == 0) {
+                    string notification = received_message.substr(11);
+                    cout << COLOR_RED << notification << COLOR_RESET << endl;
+                }
+                else if (received_message.find("ADMIN_KICK:") == 0) {
+                    string notification = received_message.substr(11);
+                    cout << COLOR_RED << notification << COLOR_RESET << endl;
+                    cout << "Connection will be closed..." << endl;
+                    break; // Exit the chat loop
+                }
+                else if (received_message.find("ADMIN_UNMUTE:") == 0) {
+                    string notification = received_message.substr(13);
+                    cout << COLOR_LIGHT_GREEN << notification << COLOR_RESET << endl;
+                }
+                else if (received_message.find("ADMIN_ERROR:") == 0) {
+                    string error = received_message.substr(12);
+                    cout << COLOR_RED << "Admin Error: " << error << COLOR_RESET << endl;
+                }
+                else if (received_message.find("MUTED:") == 0) {
+                    string mute_msg = received_message.substr(6);
+                    cout << COLOR_RED << mute_msg << COLOR_RESET << endl;
+                }
                 // Check if it's a join/leave message
-                if (received_message.find(" has joined the chat!") != string::npos) {
+                else if (received_message.find(" has joined the chat!") != string::npos) {
                     // Display join messages in light green
                     cout << COLOR_LIGHT_GREEN << received_message << COLOR_RESET << endl;
-                } else if (received_message.find(" has left the chat!") != string::npos) {
+                } 
+                else if (received_message.find(" has left the chat!") != string::npos) {
                     // Display leave messages in light red
                     cout << COLOR_LIGHT_RED << received_message << COLOR_RESET << endl;
-                } else {
+                }
+                else if (received_message.find(" has been muted by ") != string::npos ||
+                         received_message.find(" has been kicked by ") != string::npos ||
+                         received_message.find(" has been unmuted by ") != string::npos) {
+                    // Display admin action messages in red
+                    cout << COLOR_RED << received_message << COLOR_RESET << endl;
+                }
+                else {
                     // Find the dash separator to split username and message
                     size_t dash_pos = received_message.find(" - ");
                     if (dash_pos != string::npos) {
                         string sender_name = received_message.substr(0, dash_pos);
                         string actual_message = received_message.substr(dash_pos + 3);
-                        cout << COLOR_CYAN << sender_name << COLOR_RESET << " - " << actual_message << endl;
+                        
+                        // Highlight admin messages differently
+                        if (sender_name.find("[ADMIN]") != string::npos) {
+                            cout << COLOR_BOLD_YELLOW << sender_name << COLOR_RESET << " - " << actual_message << endl;
+                        } else {
+                            cout << COLOR_CYAN << sender_name << COLOR_RESET << " - " << actual_message << endl;
+                        }
                     } else {
                         // Fallback if message doesn't have expected format
                         cout << received_message << endl;
@@ -163,7 +235,7 @@ int main() {
     }
 
     // 7. Wait for password authentication response.
-    char auth_response[12] = {0};
+    char auth_response[256] = {0}; // Increased buffer size to accommodate key
     ssize_t bytes_received = recv(client_socket, auth_response, sizeof(auth_response) - 1, 0);
     if (bytes_received <= 0) {
         cerr << "Error receiving authentication response." << endl;
@@ -174,34 +246,52 @@ int main() {
     string response(auth_response, bytes_received);
     if (response == "PASSWORD_OK") {
         cout << "Password accepted. Sending username..." << endl;
-        
-        // 8. Send the username
-        if (send(client_socket, username.c_str(), username.length(), 0) < 0) {
-            cerr << "Error sending username." << endl;
-            close(client_socket);
-            return 1;
-        }
-        
-        // 9. Wait for final authentication response
-        char final_response[3] = {0};
-        bytes_received = recv(client_socket, final_response, sizeof(final_response) - 1, 0);
-        if (bytes_received <= 0) {
-            cerr << "Error receiving final authentication response." << endl;
-            close(client_socket);
-            return 1;
-        }
-        
-        string final_resp(final_response, bytes_received);
-        if (final_resp == "OK") {
-            // Authentication successful, start chatting
-            chat_with_server(client_socket, username);
-        } else {
-            cout << "Unexpected final response from server: " << final_resp << endl;
-        }
+    } else if (response == "ADMIN_OK") {
+        cout << COLOR_BOLD_YELLOW << "Admin password accepted! You have admin privileges." << COLOR_RESET << endl;
+        cout << "Sending username..." << endl;
+        is_admin = true;
+    } else if (response.substr(0, 3) == "KEY") {
+        // Server sent encryption key (admin password)
+        encryption_key = response.substr(4); // Remove "KEY:" prefix
+        cout << "Password accepted. Encryption key received. Sending username..." << endl;
+    } else if (response.substr(0, 9) == "ADMIN_KEY") {
+        // Admin authentication with key
+        encryption_key = response.substr(10); // Remove "ADMIN_KEY:" prefix
+        cout << COLOR_BOLD_YELLOW << "Admin password accepted! You have admin privileges." << COLOR_RESET << endl;
+        cout << "Encryption key received. Sending username..." << endl;
+        is_admin = true;
     } else if (response == "FAIL") {
         cout << "Authentication failed. Incorrect password." << endl;
+        close(client_socket);
+        return 1;
     } else {
         cout << "Unexpected response from server: " << response << endl;
+        close(client_socket);
+        return 1;
+    }
+
+    // 8. Send the username
+    if (send(client_socket, username.c_str(), username.length(), 0) < 0) {
+        cerr << "Error sending username." << endl;
+        close(client_socket);
+        return 1;
+    }
+    
+    // 9. Wait for final authentication response
+    char final_response[3] = {0};
+    bytes_received = recv(client_socket, final_response, sizeof(final_response) - 1, 0);
+    if (bytes_received <= 0) {
+        cerr << "Error receiving final authentication response." << endl;
+        close(client_socket);
+        return 1;
+    }
+    
+    string final_resp(final_response, bytes_received);
+    if (final_resp == "OK") {
+        // Authentication successful, start chatting
+        chat_with_server(client_socket, username);
+    } else {
+        cout << "Unexpected final response from server: " << final_resp << endl;
     }
 
     // 8. Close the socket.
