@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <termios.h>
 
 using namespace std;
 
@@ -21,9 +22,11 @@ const string COLOR_LIGHT_RED = "\033[91m";     // Light red for leave messages
 const string COLOR_LIGHT_GREEN = "\033[92m";   // Light green for join messages
 const string COLOR_RED = "\033[31m";           // Red for admin notifications
 const string COLOR_BOLD_YELLOW = "\033[1;33m"; // Bold yellow for admin status
+const string COLOR_DIM = "\033[2m";            // Dim text for history
 
 bool is_admin = false;
 string encryption_key; // Will store admin password for encryption
+string current_input = ""; // Global variable to store current typing
 
 // XOR encryption/decryption using admin password as key
 string encrypt_message(const string& message, const string& key) {
@@ -39,9 +42,50 @@ string decrypt_message(const string& encrypted, const string& key) {
     return encrypt_message(encrypted, key);
 }
 
+string process_mentions_for_display(const string& message, const string& current_username) {
+    string processed = message;
+    
+    // Process mention markers
+    size_t pos = 0;
+    while ((pos = processed.find("MENTION_START@", pos)) != string::npos) {
+        size_t end_pos = processed.find("MENTION_END", pos);
+        if (end_pos != string::npos) {
+            string mentioned_user = processed.substr(pos + 14, end_pos - pos - 14); // Skip "MENTION_START@"
+            
+            // Check if this user is the current user (mentioned)
+            string clean_current_username = current_username;
+            if (clean_current_username.find("[ADMIN] ") == 0) {
+                clean_current_username = clean_current_username.substr(8);
+            }
+            
+            if (mentioned_user == clean_current_username) {
+                // This user was mentioned - highlight in yellow
+                string highlight = COLOR_YELLOW + "@" + mentioned_user + COLOR_RESET;
+                processed.replace(pos, end_pos - pos + 11, highlight); // +11 for "MENTION_END"
+                pos += highlight.length();
+            } else {
+                // Someone else was mentioned - just show normally
+                processed.replace(pos, end_pos - pos + 11, "@" + mentioned_user);
+                pos += mentioned_user.length() + 1;
+            }
+        } else {
+            break;
+        }
+    }
+    
+    return processed;
+}
+
+void restore_input_line() {
+    if (!current_input.empty()) {
+        cout << COLOR_MAGENTA << "You >> " << COLOR_RESET << current_input << flush;
+    } else {
+        cout << COLOR_MAGENTA << "You >> " << COLOR_RESET << flush;
+    }
+}
+
 // Function to handle sending and receiving messages after successful authentication.
 void chat_with_server(int client_socket, const string& username) {
-    string current_input;
     char buffer[1024] = {0};
 
     cout << "Authentication successful! You can now send messages." << endl;
@@ -50,6 +94,7 @@ void chat_with_server(int client_socket, const string& username) {
         cout << "Admin commands: admin.mute <username>, admin.kick <username>, admin.unmute <username>" << endl;
     }
     cout << "Messages are automatically encrypted for secure communication!" << endl;
+    cout << "You can mention users with @username - mentions will be highlighted in yellow!" << endl;
     cout << "Type a message and press Enter. To exit, type 'cmd.exit'." << endl;
     cout << COLOR_MAGENTA << "You >> " << COLOR_RESET << flush; // Initial prompt
 
@@ -72,6 +117,9 @@ void chat_with_server(int client_socket, const string& username) {
             else if (current_input == "cmd.sybau"){
                 current_input = "Sybau 💔🥀";
             }
+            else if (current_input == "cmd.skull"){
+                current_input = "💀";
+            }
             
             string message_to_send;
             
@@ -87,6 +135,7 @@ void chat_with_server(int client_socket, const string& username) {
             string encrypted_message = encrypt_message(message_to_send, encryption_key);
             send(client_socket, encrypted_message.c_str(), encrypted_message.length(), 0);
             
+            current_input = ""; // Clear the input after sending
             cout << COLOR_MAGENTA << "You >> " << COLOR_RESET << flush; // Show prompt for next message
         }
 
@@ -125,6 +174,27 @@ void chat_with_server(int client_socket, const string& username) {
                     string mute_msg = received_message.substr(6);
                     cout << COLOR_RED << mute_msg << COLOR_RESET << endl;
                 }
+                else if (received_message.find("HISTORY:") == 0) {
+                    // Display history messages in dimmed color
+                    string history_msg = received_message.substr(8);
+                    history_msg = process_mentions_for_display(history_msg, username);
+                    
+                    // Find the dash separator to split username and message
+                    size_t dash_pos = history_msg.find(" - ");
+                    if (dash_pos != string::npos) {
+                        string sender_name = history_msg.substr(0, dash_pos);
+                        string actual_message = history_msg.substr(dash_pos + 3);
+                        
+                        // Display history with dim formatting
+                        if (sender_name.find("[ADMIN]") != string::npos) {
+                            cout << COLOR_DIM << COLOR_BOLD_YELLOW << sender_name << COLOR_RESET << COLOR_DIM << " - " << actual_message << COLOR_RESET << endl;
+                        } else {
+                            cout << COLOR_DIM << COLOR_CYAN << sender_name << COLOR_RESET << COLOR_DIM << " - " << actual_message << COLOR_RESET << endl;
+                        }
+                    } else {
+                        cout << COLOR_DIM << history_msg << COLOR_RESET << endl;
+                    }
+                }
                 // Check if it's a join/leave message
                 else if (received_message.find(" has joined the chat!") != string::npos) {
                     // Display join messages in light green
@@ -141,11 +211,14 @@ void chat_with_server(int client_socket, const string& username) {
                     cout << COLOR_RED << received_message << COLOR_RESET << endl;
                 }
                 else {
+                    // Process mentions for display
+                    string display_message = process_mentions_for_display(received_message, username);
+                    
                     // Find the dash separator to split username and message
-                    size_t dash_pos = received_message.find(" - ");
+                    size_t dash_pos = display_message.find(" - ");
                     if (dash_pos != string::npos) {
-                        string sender_name = received_message.substr(0, dash_pos);
-                        string actual_message = received_message.substr(dash_pos + 3);
+                        string sender_name = display_message.substr(0, dash_pos);
+                        string actual_message = display_message.substr(dash_pos + 3);
                         
                         // Highlight admin messages differently
                         if (sender_name.find("[ADMIN]") != string::npos) {
@@ -155,12 +228,12 @@ void chat_with_server(int client_socket, const string& username) {
                         }
                     } else {
                         // Fallback if message doesn't have expected format
-                        cout << received_message << endl;
+                        cout << display_message << endl;
                     }
                 }
                 
-                // Restore the prompt
-                cout << COLOR_MAGENTA << "You >> " << COLOR_RESET << flush;
+                // Restore the prompt with any previously typed text
+                restore_input_line();
             } else if (bytes_received == 0) {
                 cout << "\r\033[K"; // Clear current line
                 cout << "Server disconnected." << endl;
@@ -294,7 +367,7 @@ int main() {
         cout << "Unexpected final response from server: " << final_resp << endl;
     }
 
-    // 8. Close the socket.
+    // 10. Close the socket.
     close(client_socket);
     return 0;
 }

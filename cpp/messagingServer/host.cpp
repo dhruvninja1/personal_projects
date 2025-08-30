@@ -12,6 +12,8 @@
 #include <algorithm>
 #include <map>
 #include <sstream>
+#include <fstream>
+#include <deque>
 
 using namespace std;
 
@@ -21,15 +23,21 @@ void remove_client(int fd);
 void handle_admin_command(const string& message, int admin_fd);
 string encrypt_message(const string& message, const string& key);
 string decrypt_message(const string& encrypted, const string& key);
+void save_message_to_history(const string& message);
+void load_message_history(int client_fd);
+string process_mentions(const string& message);
 
 vector<int> client_sockets;
 string SERVER_PASSWORD;
 string ADMIN_PASSWORD;
+string CHAT_NAME;
+string HISTORY_FILENAME;
 map<int, bool> authenticated_clients; // To track authenticated clients
 map<int, string> client_usernames;    // To track client usernames
 map<int, int> client_auth_stage;      // 0 = password needed, 1 = username needed, 2 = fully authenticated
 map<int, bool> admin_clients;         // To track admin clients
 map<int, bool> muted_clients;         // To track muted clients
+deque<string> message_history;        // In-memory message history
 
 // XOR encryption using admin password as key
 string encrypt_message(const string& message, const string& key) {
@@ -50,6 +58,82 @@ bool set_non_blocking(int fd) {
     if (flags == -1) return false;
     flags |= O_NONBLOCK;
     return fcntl(fd, F_SETFL, flags) != -1;
+}
+
+void save_message_to_history(const string& message) {
+    // Add to in-memory history
+    message_history.push_back(message);
+    
+    // Keep only last 100 messages in memory
+    if (message_history.size() > 100) {
+        message_history.pop_front();
+    }
+    
+    // Save to file
+    ofstream file(HISTORY_FILENAME, ios::app);
+    if (file.is_open()) {
+        file << message << endl;
+        file.close();
+    }
+}
+
+void load_message_history(int client_fd) {
+    // Send the last 50 messages from memory to the newly connected client
+    int start_index = max(0, (int)message_history.size() - 50);
+    
+    for (int i = start_index; i < (int)message_history.size(); i++) {
+        string history_msg = "HISTORY:" + message_history[i];
+        string encrypted_history = encrypt_message(history_msg, ADMIN_PASSWORD);
+        send(client_fd, encrypted_history.c_str(), encrypted_history.length(), 0);
+        usleep(10000); // Small delay to ensure messages arrive in order
+    }
+}
+
+string process_mentions(const string& message) {
+    string processed = message;
+    
+    // Find all @mentions and mark them for client-side highlighting
+    size_t pos = 0;
+    while ((pos = processed.find("@", pos)) != string::npos) {
+        size_t end_pos = pos + 1;
+        
+        // Find the end of the username (space, punctuation, or end of string)
+        while (end_pos < processed.length() && 
+               (isalnum(processed[end_pos]) || processed[end_pos] == '_' || processed[end_pos] == '-')) {
+            end_pos++;
+        }
+        
+        if (end_pos > pos + 1) { // We found a valid username
+            string mentioned_user = processed.substr(pos + 1, end_pos - pos - 1);
+            
+            // Check if this user exists
+            bool user_exists = false;
+            for (auto& pair : client_usernames) {
+                string clean_username = pair.second;
+                // Remove [ADMIN] prefix for comparison
+                if (clean_username.find("[ADMIN] ") == 0) {
+                    clean_username = clean_username.substr(8);
+                }
+                if (clean_username == mentioned_user) {
+                    user_exists = true;
+                    break;
+                }
+            }
+            
+            if (user_exists) {
+                // Mark this as a mention for client-side processing
+                string mention_marker = "MENTION_START@" + mentioned_user + "MENTION_END";
+                processed.replace(pos, end_pos - pos, mention_marker);
+                pos += mention_marker.length();
+            } else {
+                pos = end_pos;
+            }
+        } else {
+            pos = end_pos;
+        }
+    }
+    
+    return processed;
 }
 
 void remove_client(int fd) {
@@ -74,8 +158,11 @@ void remove_client(int fd) {
 }
 
 void broadcast_message(const string& message, int sender_fd) {
+    // Process mentions in the message
+    string processed_message = process_mentions(message);
+    
     // Encrypt the message before broadcasting
-    string encrypted_message = encrypt_message(message, ADMIN_PASSWORD);
+    string encrypted_message = encrypt_message(processed_message, ADMIN_PASSWORD);
     
     for (int client_fd : client_sockets) {
         if (client_fd != sender_fd) {
@@ -92,7 +179,12 @@ void broadcast_message(const string& message, int sender_fd) {
 
 int find_client_by_username(const string& username) {
     for (auto& pair : client_usernames) {
-        if (pair.second == username) {
+        string clean_username = pair.second;
+        // Remove [ADMIN] prefix for comparison
+        if (clean_username.find("[ADMIN] ") == 0) {
+            clean_username = clean_username.substr(8);
+        }
+        if (clean_username == username) {
             return pair.first;
         }
     }
@@ -174,6 +266,25 @@ void handle_admin_command(const string& message, int admin_fd) {
     }
 }
 
+void load_existing_history() {
+    ifstream file(HISTORY_FILENAME);
+    if (file.is_open()) {
+        string line;
+        while (getline(file, line)) {
+            message_history.push_back(line);
+        }
+        file.close();
+        
+        // Keep only last 100 messages in memory
+        if (message_history.size() > 100) {
+            message_history.erase(message_history.begin(), 
+                                message_history.end() - 100);
+        }
+        
+        cout << "Loaded " << message_history.size() << " messages from history." << endl;
+    }
+}
+
 int main(int argc, char* argv[]) {
     if (argc != 4) {
         cerr << "Usage: ./host <port> <password> <admin_password>" << endl;
@@ -182,6 +293,14 @@ int main(int argc, char* argv[]) {
     const int PORT = stoi(argv[1]);
     SERVER_PASSWORD = argv[2];
     ADMIN_PASSWORD = argv[3];
+
+    // Get chat name and setup history file
+    cout << "Enter chat room name: ";
+    getline(cin, CHAT_NAME);
+    HISTORY_FILENAME = CHAT_NAME + "_history.txt";
+    
+    // Load existing message history
+    load_existing_history();
 
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd == -1) {
@@ -228,7 +347,8 @@ int main(int argc, char* argv[]) {
     const int MAX_EVENTS = 128;
     struct kevent event_list[MAX_EVENTS];
 
-    cout << "Server started on port " << PORT << endl;
+    cout << "Chat room '" << CHAT_NAME << "' started on port " << PORT << endl;
+    cout << "History file: " << HISTORY_FILENAME << endl;
     cout << "Regular password: " << SERVER_PASSWORD << endl;
     cout << "Admin password: " << ADMIN_PASSWORD << endl;
     cout << "Encryption enabled using admin password as key for all messages" << endl;
@@ -285,6 +405,9 @@ int main(int argc, char* argv[]) {
                                 string encrypted_reminder = encrypt_message(mute_reminder, ADMIN_PASSWORD);
                                 send(event_fd, encrypted_reminder.c_str(), encrypted_reminder.length(), 0);
                             } else {
+                                // Save regular messages to history
+                                save_message_to_history(decrypted_message);
+                                
                                 // Fully authenticated and not muted, broadcast the decrypted message
                                 broadcast_message(decrypted_message, event_fd);
                             }
@@ -328,6 +451,9 @@ int main(int argc, char* argv[]) {
                             client_sockets.push_back(event_fd);
                             
                             send(event_fd, "OK", 2, 0);
+                            
+                            // Load message history for the new client
+                            load_message_history(event_fd);
                             
                             // Broadcast join message
                             string join_message = username + " has joined the chat!";
