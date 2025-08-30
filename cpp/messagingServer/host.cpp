@@ -7,13 +7,18 @@
 #include <unistd.h>
 #include <cstring>
 #include <fcntl.h>
-#include <sys/event.h>
 #include <cerrno>
 #include <algorithm>
 #include <map>
 #include <sstream>
 #include <fstream>
 #include <deque>
+
+#ifdef __APPLE__
+#include <sys/event.h>
+#elif defined(__linux__)
+#include <sys/epoll.h>
+#endif
 
 using namespace std;
 
@@ -38,6 +43,10 @@ map<int, int> client_auth_stage;      // 0 = password needed, 1 = username neede
 map<int, bool> admin_clients;         // To track admin clients
 map<int, bool> muted_clients;         // To track muted clients
 deque<string> message_history;        // In-memory message history
+
+#ifdef __linux__
+int epoll_fd;
+#endif
 
 // XOR encryption using admin password as key
 string encrypt_message(const string& message, const string& key) {
@@ -154,6 +163,12 @@ void remove_client(int fd) {
     client_auth_stage.erase(fd);
     admin_clients.erase(fd);
     muted_clients.erase(fd);
+    
+#ifdef __linux__
+    // Remove from epoll
+    epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, NULL);
+#endif
+    
     close(fd);
 }
 
@@ -285,6 +300,15 @@ void load_existing_history() {
     }
 }
 
+#ifdef __linux__
+bool add_to_epoll(int epoll_fd, int fd, uint32_t events) {
+    struct epoll_event ev;
+    ev.events = events;
+    ev.data.fd = fd;
+    return epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &ev) == 0;
+}
+#endif
+
 int main(int argc, char* argv[]) {
     if (argc != 4) {
         cerr << "Usage: ./host <port> <password> <admin_password>" << endl;
@@ -334,6 +358,7 @@ int main(int argc, char* argv[]) {
     
     set_non_blocking(server_fd);
 
+#ifdef __APPLE__
     int kq_fd = kqueue();
     if (kq_fd == -1) {
         cerr << "Error: kqueue failed." << endl;
@@ -346,15 +371,36 @@ int main(int argc, char* argv[]) {
 
     const int MAX_EVENTS = 128;
     struct kevent event_list[MAX_EVENTS];
+    
+    cout << "Chat room '" << CHAT_NAME << "' started on port " << PORT << " (macOS/kqueue)" << endl;
+#elif defined(__linux__)
+    epoll_fd = epoll_create1(0);
+    if (epoll_fd == -1) {
+        cerr << "Error: epoll_create1 failed." << endl;
+        return 1;
+    }
 
-    cout << "Chat room '" << CHAT_NAME << "' started on port " << PORT << endl;
+    if (!add_to_epoll(epoll_fd, server_fd, EPOLLIN | EPOLLET)) {
+        cerr << "Error: Failed to add server socket to epoll." << endl;
+        return 1;
+    }
+
+    const int MAX_EVENTS = 128;
+    struct epoll_event events[MAX_EVENTS];
+    
+    cout << "Chat room '" << CHAT_NAME << "' started on port " << PORT << " (Linux/epoll)" << endl;
+#endif
+
     cout << "History file: " << HISTORY_FILENAME << endl;
     cout << "Regular password: " << SERVER_PASSWORD << endl;
     cout << "Admin password: " << ADMIN_PASSWORD << endl;
     cout << "Encryption enabled using admin password as key for all messages" << endl;
 
     while (true) {
-        int num_events = kevent(kq_fd, NULL, 0, event_list, MAX_EVENTS, NULL);
+        int num_events;
+        
+#ifdef __APPLE__
+        num_events = kevent(kq_fd, NULL, 0, event_list, MAX_EVENTS, NULL);
         if (num_events < 0) {
             cerr << "Error: kevent failed in event loop." << endl;
             continue;
@@ -369,6 +415,23 @@ int main(int argc, char* argv[]) {
             }
 
             if (event_fd == server_fd) {
+#elif defined(__linux__)
+        num_events = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
+        if (num_events < 0) {
+            cerr << "Error: epoll_wait failed in event loop." << endl;
+            continue;
+        }
+
+        for (int i = 0; i < num_events; ++i) {
+            int event_fd = events[i].data.fd;
+
+            if ((events[i].events & EPOLLERR) || (events[i].events & EPOLLHUP)) {
+                remove_client(event_fd);
+                continue;
+            }
+
+            if (event_fd == server_fd) {
+#endif
                 sockaddr_in client_addr;
                 socklen_t client_addr_len = sizeof(client_addr);
                 int client_socket = accept(server_fd, (struct sockaddr*)&client_addr, &client_addr_len);
@@ -382,8 +445,12 @@ int main(int argc, char* argv[]) {
                 admin_clients[client_socket] = false;
                 muted_clients[client_socket] = false;
 
+#ifdef __APPLE__
                 EV_SET(&change_event, client_socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
                 kevent(kq_fd, &change_event, 1, NULL, 0, NULL);
+#elif defined(__linux__)
+                add_to_epoll(epoll_fd, client_socket, EPOLLIN | EPOLLET);
+#endif
             } else {
                 char buffer[1024];
                 ssize_t bytes_read = recv(event_fd, buffer, sizeof(buffer), 0);

@@ -7,7 +7,13 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+
+#ifdef __APPLE__
 #include <termios.h>
+#elif defined(__linux__)
+#include <termios.h>
+#include <sys/select.h>
+#endif
 
 using namespace std;
 
@@ -96,6 +102,13 @@ void chat_with_server(int client_socket, const string& username) {
     cout << "Messages are automatically encrypted for secure communication!" << endl;
     cout << "You can mention users with @username - mentions will be highlighted in yellow!" << endl;
     cout << "Type a message and press Enter. To exit, type 'cmd.exit'." << endl;
+    
+#ifdef __APPLE__
+    cout << "Running on macOS" << endl;
+#elif defined(__linux__)
+    cout << "Running on Linux" << endl;
+#endif
+    
     cout << COLOR_MAGENTA << "You >> " << COLOR_RESET << flush; // Initial prompt
 
     while (true) {
@@ -153,10 +166,6 @@ void chat_with_server(int client_socket, const string& username) {
                 
                 // Handle special admin messages
                 if (received_message.find("ADMIN_MUTE:") == 0) {
-                    string notification = received_message.substr(11);
-                    cout << COLOR_RED << notification << COLOR_RESET << endl;
-                }
-                else if (received_message.find("ADMIN_KICK:") == 0) {
                     string notification = received_message.substr(11);
                     cout << COLOR_RED << notification << COLOR_RESET << endl;
                     cout << "Connection will be closed..." << endl;
@@ -370,4 +379,5 @@ int main() {
     // 10. Close the socket.
     close(client_socket);
     return 0;
-}
+};
+            
