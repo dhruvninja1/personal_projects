@@ -7,46 +7,65 @@
 #include <unistd.h>
 #include <cstring>
 #include <fcntl.h>
+#include <sys/event.h>
 #include <cerrno>
 #include <algorithm>
 #include <map>
+#include <set>
 #include <sstream>
 #include <fstream>
 #include <deque>
 
-#ifdef __APPLE__
-#include <sys/event.h>
-#elif defined(__linux__)
-#include <sys/epoll.h>
-#endif
-
 using namespace std;
 
-void broadcast_message(const string& message, int sender_fd = -1);
+struct ChatRoom {
+    string name;
+    set<int> clients;
+    deque<string> message_history;
+    string history_filename;
+    
+    // Default constructor
+    ChatRoom() : name("") {
+        // Empty default constructor
+    }
+    
+    ChatRoom(const string& room_name, const string& logs_dir = "") : name(room_name) {
+        if (logs_dir.empty()) {
+            history_filename = room_name + "_history.txt";
+        } else {
+            history_filename = logs_dir + "/" + room_name + "_history.txt";
+        }
+        load_history();
+    }
+    
+    void load_history();
+    void save_message(const string& message);
+    void send_history_to_client(int client_fd, const string& admin_password);
+};
+
+void broadcast_message_to_room(const string& message, const string& room_name, int sender_fd = -1);
 bool set_non_blocking(int fd);
 void remove_client(int fd);
 void handle_admin_command(const string& message, int admin_fd);
+void handle_room_command(const string& message, int client_fd);
 string encrypt_message(const string& message, const string& key);
 string decrypt_message(const string& encrypted, const string& key);
-void save_message_to_history(const string& message);
-void load_message_history(int client_fd);
 string process_mentions(const string& message);
+void log_server_event(const string& event);
+void save_rooms_list();
+void load_rooms_list();
 
 vector<int> client_sockets;
 string SERVER_PASSWORD;
 string ADMIN_PASSWORD;
-string CHAT_NAME;
-string HISTORY_FILENAME;
-map<int, bool> authenticated_clients; // To track authenticated clients
-map<int, string> client_usernames;    // To track client usernames
-map<int, int> client_auth_stage;      // 0 = password needed, 1 = username needed, 2 = fully authenticated
-map<int, bool> admin_clients;         // To track admin clients
-map<int, bool> muted_clients;         // To track muted clients
-deque<string> message_history;        // In-memory message history
-
-#ifdef __linux__
-int epoll_fd;
-#endif
+string ROOMS_LOGS_DIR; // Global variable for rooms logs directory
+map<string, ChatRoom> chat_rooms;
+map<int, bool> authenticated_clients;
+map<int, string> client_usernames;
+map<int, int> client_auth_stage;
+map<int, bool> admin_clients;
+map<int, bool> muted_clients;
+map<int, string> client_current_room; // Track which room each client is in
 
 // XOR encryption using admin password as key
 string encrypt_message(const string& message, const string& key) {
@@ -58,8 +77,55 @@ string encrypt_message(const string& message, const string& key) {
 }
 
 string decrypt_message(const string& encrypted, const string& key) {
-    // XOR is symmetric, so decryption is the same as encryption
     return encrypt_message(encrypted, key);
+}
+
+// ChatRoom method implementations
+void ChatRoom::load_history() {
+    if (name.empty()) return; // Skip if default constructed
+    
+    ifstream file(history_filename);
+    if (file.is_open()) {
+        string line;
+        while (getline(file, line)) {
+            message_history.push_back(line);
+        }
+        file.close();
+        
+        // Keep only last 100 messages in memory
+        if (message_history.size() > 100) {
+            message_history.erase(message_history.begin(), 
+                                message_history.end() - 100);
+        }
+    }
+}
+
+void ChatRoom::save_message(const string& message) {
+    message_history.push_back(message);
+    
+    // Keep only last 100 messages in memory
+    if (message_history.size() > 100) {
+        message_history.pop_front();
+    }
+    
+    // Save to file
+    ofstream file(history_filename, ios::app);
+    if (file.is_open()) {
+        file << message << endl;
+        file.close();
+    }
+}
+
+void ChatRoom::send_history_to_client(int client_fd, const string& admin_password) {
+    // Send the last 50 messages to the newly connected client
+    int start_index = max(0, (int)message_history.size() - 50);
+    
+    for (int i = start_index; i < (int)message_history.size(); i++) {
+        string history_msg = "HISTORY:" + message_history[i];
+        string encrypted_history = encrypt_message(history_msg, admin_password);
+        send(client_fd, encrypted_history.c_str(), encrypted_history.length(), 0);
+        usleep(10000); // Small delay to ensure messages arrive in order
+    }
 }
 
 bool set_non_blocking(int fd) {
@@ -69,57 +135,24 @@ bool set_non_blocking(int fd) {
     return fcntl(fd, F_SETFL, flags) != -1;
 }
 
-void save_message_to_history(const string& message) {
-    // Add to in-memory history
-    message_history.push_back(message);
-    
-    // Keep only last 100 messages in memory
-    if (message_history.size() > 100) {
-        message_history.pop_front();
-    }
-    
-    // Save to file
-    ofstream file(HISTORY_FILENAME, ios::app);
-    if (file.is_open()) {
-        file << message << endl;
-        file.close();
-    }
-}
-
-void load_message_history(int client_fd) {
-    // Send the last 50 messages from memory to the newly connected client
-    int start_index = max(0, (int)message_history.size() - 50);
-    
-    for (int i = start_index; i < (int)message_history.size(); i++) {
-        string history_msg = "HISTORY:" + message_history[i];
-        string encrypted_history = encrypt_message(history_msg, ADMIN_PASSWORD);
-        send(client_fd, encrypted_history.c_str(), encrypted_history.length(), 0);
-        usleep(10000); // Small delay to ensure messages arrive in order
-    }
-}
-
 string process_mentions(const string& message) {
     string processed = message;
     
-    // Find all @mentions and mark them for client-side highlighting
     size_t pos = 0;
     while ((pos = processed.find("@", pos)) != string::npos) {
         size_t end_pos = pos + 1;
         
-        // Find the end of the username (space, punctuation, or end of string)
         while (end_pos < processed.length() && 
                (isalnum(processed[end_pos]) || processed[end_pos] == '_' || processed[end_pos] == '-')) {
             end_pos++;
         }
         
-        if (end_pos > pos + 1) { // We found a valid username
+        if (end_pos > pos + 1) {
             string mentioned_user = processed.substr(pos + 1, end_pos - pos - 1);
             
-            // Check if this user exists
             bool user_exists = false;
             for (auto& pair : client_usernames) {
                 string clean_username = pair.second;
-                // Remove [ADMIN] prefix for comparison
                 if (clean_username.find("[ADMIN] ") == 0) {
                     clean_username = clean_username.substr(8);
                 }
@@ -130,7 +163,6 @@ string process_mentions(const string& message) {
             }
             
             if (user_exists) {
-                // Mark this as a mention for client-side processing
                 string mention_marker = "MENTION_START@" + mentioned_user + "MENTION_END";
                 processed.replace(pos, end_pos - pos, mention_marker);
                 pos += mention_marker.length();
@@ -145,41 +177,65 @@ string process_mentions(const string& message) {
     return processed;
 }
 
-void remove_client(int fd) {
-    // Broadcast leave message if client was authenticated
-    if (authenticated_clients.count(fd) && authenticated_clients[fd]) {
-        if (client_usernames.count(fd)) {
-            string leave_message = client_usernames[fd] + " has left the chat!";
-            broadcast_message(leave_message, fd);
-        }
+void log_server_event(const string& event) {
+    string logs_dir = "logs"; // Default logs directory
+    if (!ROOMS_LOGS_DIR.empty()) {
+        // Extract logs directory from ROOMS_LOGS_DIR (remove "/rooms" suffix)
+        logs_dir = ROOMS_LOGS_DIR.substr(0, ROOMS_LOGS_DIR.find("/rooms"));
     }
     
-    auto it = find(client_sockets.begin(), client_sockets.end(), fd);
-    if (it != client_sockets.end()) {
-        client_sockets.erase(it);
+    string server_log_file = logs_dir + "/server.log";
+    ofstream server_log(server_log_file, ios::app);
+    if (server_log.is_open()) {
+        time_t now = time(0);
+        char* dt = ctime(&now);
+        dt[strlen(dt)-1] = '\0'; // Remove newline
+        server_log << "[" << dt << "] " << event << endl;
+        server_log.close();
     }
-    authenticated_clients.erase(fd);
-    client_usernames.erase(fd);
-    client_auth_stage.erase(fd);
-    admin_clients.erase(fd);
-    muted_clients.erase(fd);
-    
-#ifdef __linux__
-    // Remove from epoll
-    epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, NULL);
-#endif
-    
-    close(fd);
 }
 
-void broadcast_message(const string& message, int sender_fd) {
-    // Process mentions in the message
-    string processed_message = process_mentions(message);
+void save_rooms_list() {
+    if (ROOMS_LOGS_DIR.empty()) return;
     
-    // Encrypt the message before broadcasting
+    string rooms_list_file = ROOMS_LOGS_DIR.substr(0, ROOMS_LOGS_DIR.find("/rooms")) + "/rooms_list.txt";
+    ofstream file(rooms_list_file);
+    if (file.is_open()) {
+        for (auto& room_pair : chat_rooms) {
+            file << room_pair.first << endl;
+        }
+        file.close();
+        log_server_event("Rooms list saved to " + rooms_list_file);
+    }
+}
+
+void load_rooms_list() {
+    if (ROOMS_LOGS_DIR.empty()) return;
+    
+    string rooms_list_file = ROOMS_LOGS_DIR.substr(0, ROOMS_LOGS_DIR.find("/rooms")) + "/rooms_list.txt";
+    ifstream file(rooms_list_file);
+    if (file.is_open()) {
+        string room_name;
+        while (getline(file, room_name)) {
+            if (!room_name.empty() && chat_rooms.find(room_name) == chat_rooms.end()) {
+                chat_rooms[room_name] = ChatRoom(room_name, ROOMS_LOGS_DIR);
+                log_server_event("Loaded persistent room: " + room_name);
+            }
+        }
+        file.close();
+        log_server_event("Rooms list loaded from " + rooms_list_file);
+    }
+}
+
+void broadcast_message_to_room(const string& message, const string& room_name, int sender_fd) {
+    auto room_it = chat_rooms.find(room_name);
+    if (room_it == chat_rooms.end()) return;
+    
+    string processed_message = process_mentions(message);
     string encrypted_message = encrypt_message(processed_message, ADMIN_PASSWORD);
     
-    for (int client_fd : client_sockets) {
+    ChatRoom& room = room_it->second;
+    for (int client_fd : room.clients) {
         if (client_fd != sender_fd) {
             ssize_t bytes_sent = send(client_fd, encrypted_message.c_str(), encrypted_message.length(), 0);
             if (bytes_sent == -1) {
@@ -192,10 +248,40 @@ void broadcast_message(const string& message, int sender_fd) {
     }
 }
 
+void remove_client(int fd) {
+    // Remove from current room and broadcast leave message
+    if (authenticated_clients.count(fd) && authenticated_clients[fd]) {
+        if (client_usernames.count(fd) && client_current_room.count(fd) && !client_current_room[fd].empty()) {
+            string current_room = client_current_room[fd];
+            string leave_message = client_usernames[fd] + " has left the chat!";
+            broadcast_message_to_room(leave_message, current_room, fd);
+            
+            // Log user disconnection
+            log_server_event("User '" + client_usernames[fd] + "' disconnected from room '" + current_room + "'");
+            
+            // Remove from room
+            if (chat_rooms.find(current_room) != chat_rooms.end()) {
+                chat_rooms[current_room].clients.erase(fd);
+            }
+        }
+    }
+    
+    auto it = find(client_sockets.begin(), client_sockets.end(), fd);
+    if (it != client_sockets.end()) {
+        client_sockets.erase(it);
+    }
+    authenticated_clients.erase(fd);
+    client_usernames.erase(fd);
+    client_auth_stage.erase(fd);
+    admin_clients.erase(fd);
+    muted_clients.erase(fd);
+    client_current_room.erase(fd);
+    close(fd);
+}
+
 int find_client_by_username(const string& username) {
     for (auto& pair : client_usernames) {
         string clean_username = pair.second;
-        // Remove [ADMIN] prefix for comparison
         if (clean_username.find("[ADMIN] ") == 0) {
             clean_username = clean_username.substr(8);
         }
@@ -206,26 +292,143 @@ int find_client_by_username(const string& username) {
     return -1;
 }
 
+void handle_room_command(const string& message, int client_fd) {
+    if (message.find("/join ") == 0) {
+        string room_name = message.substr(6); // Remove "/join "
+        
+        // Check if room exists
+        if (chat_rooms.find(room_name) == chat_rooms.end()) {
+            string error_msg = "ROOM_ERROR:Room '" + room_name + "' does not exist. Use /rooms to see available rooms.";
+            send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+            return;
+        }
+        
+        // Remove from current room (if they're in one)
+        if (client_current_room.count(client_fd) && !client_current_room[client_fd].empty()) {
+            string old_room = client_current_room[client_fd];
+            if (chat_rooms.find(old_room) != chat_rooms.end()) {
+                chat_rooms[old_room].clients.erase(client_fd);
+                
+                // Broadcast leave message to old room
+                string leave_msg = client_usernames[client_fd] + " has left " + old_room;
+                broadcast_message_to_room(leave_msg, old_room, client_fd);
+                log_server_event("User '" + client_usernames[client_fd] + "' left room '" + old_room + "'");
+            }
+        }
+        
+        // Add to new room
+        auto room_it = chat_rooms.find(room_name);
+        if (room_it != chat_rooms.end()) {
+            room_it->second.clients.insert(client_fd);
+            client_current_room[client_fd] = room_name;
+            
+            // Send room info (unencrypted system message)
+            string room_info = "ROOM_JOINED:" + room_name;
+            send(client_fd, room_info.c_str(), room_info.length(), 0);
+            
+            // Small delay to ensure ROOM_JOINED is processed first
+            usleep(50000); // 50ms delay
+            
+            // Send history
+            room_it->second.send_history_to_client(client_fd, ADMIN_PASSWORD);
+            
+            // Broadcast join message to new room
+            string join_msg = client_usernames[client_fd] + " has joined " + room_name;
+            broadcast_message_to_room(join_msg, room_name, client_fd);
+            
+            log_server_event("User '" + client_usernames[client_fd] + "' joined room '" + room_name + "'");
+        }
+    }
+    else if (message == "/rooms") {
+        string rooms_list = "ROOMS_LIST:Available rooms: ";
+        for (auto& room_pair : chat_rooms) {
+            rooms_list += room_pair.first + " (" + to_string(room_pair.second.clients.size()) + " users), ";
+        }
+        if (rooms_list.back() == ' ') rooms_list.pop_back();
+        if (rooms_list.back() == ',') rooms_list.pop_back();
+        
+        send(client_fd, rooms_list.c_str(), rooms_list.length(), 0);
+    }
+    else if (message == "/who") {
+        // Check if user is in a room first
+        if (!client_current_room.count(client_fd) || client_current_room[client_fd].empty()) {
+            string error_msg = "ROOM_ERROR:You must join a room first to see who's in it.";
+            send(client_fd, error_msg.c_str(), error_msg.length(), 0);
+            return;
+        }
+        
+        string current_room = client_current_room[client_fd];
+        if (chat_rooms.find(current_room) != chat_rooms.end()) {
+            string users_list = "USERS_LIST:Users in " + current_room + ": ";
+            for (int user_fd : chat_rooms[current_room].clients) {
+                if (client_usernames.count(user_fd)) {
+                    users_list += client_usernames[user_fd] + ", ";
+                }
+            }
+            if (users_list.back() == ' ') users_list.pop_back();
+            if (users_list.back() == ',') users_list.pop_back();
+            
+            send(client_fd, users_list.c_str(), users_list.length(), 0);
+        }
+    }
+}
+
 void handle_admin_command(const string& message, int admin_fd) {
     string admin_username = client_usernames[admin_fd];
     
-    if (message.find("admin.mute ") == 0) {
-        string target_username = message.substr(11); // Remove "admin.mute "
+    if (message.find("admin.makeroom ") == 0) {
+        string room_name = message.substr(15); // Remove "admin.makeroom "
+        
+        // Check if room already exists
+        if (chat_rooms.find(room_name) != chat_rooms.end()) {
+            string error_msg = "ADMIN_ERROR:Room '" + room_name + "' already exists.";
+            string encrypted_error = encrypt_message(error_msg, ADMIN_PASSWORD);
+            send(admin_fd, encrypted_error.c_str(), encrypted_error.length(), 0);
+            return;
+        }
+        
+        // Create new room
+        chat_rooms[room_name] = ChatRoom(room_name, ROOMS_LOGS_DIR);
+        
+        // Save rooms list to make it persistent
+        save_rooms_list();
+        
+        // Notify admin
+        string success_msg = "ADMIN_SUCCESS:Room '" + room_name + "' created successfully.";
+        string encrypted_success = encrypt_message(success_msg, ADMIN_PASSWORD);
+        send(admin_fd, encrypted_success.c_str(), encrypted_success.length(), 0);
+        
+        cout << "Admin " << admin_username << " created room: " << room_name << endl;
+        log_server_event("Admin '" + admin_username + "' created room '" + room_name + "'");
+        
+        // Broadcast to all users that a new room is available
+        string announcement = "ROOM_ANNOUNCEMENT:New room '" + room_name + "' has been created by " + admin_username;
+        for (int client_fd : client_sockets) {
+            if (client_fd != admin_fd) {
+                send(client_fd, announcement.c_str(), announcement.length(), 0);
+            }
+        }
+    }
+    else if (message.find("admin.mute ") == 0) {
+        string target_username = message.substr(11);
         int target_fd = find_client_by_username(target_username);
         
         if (target_fd != -1) {
             muted_clients[target_fd] = true;
             
-            // Notify the target user they are muted (encrypt notification)
             string mute_notification = "ADMIN_MUTE:You have been muted by an administrator.";
-            string encrypted_notification = encrypt_message(mute_notification, ADMIN_PASSWORD);
-            send(target_fd, encrypted_notification.c_str(), encrypted_notification.length(), 0);
+            string encrypted_mute = encrypt_message(mute_notification, ADMIN_PASSWORD);
+            send(target_fd, encrypted_mute.c_str(), encrypted_mute.length(), 0);
             
-            // Broadcast mute message
-            string mute_message = target_username + " has been muted by " + admin_username;
-            broadcast_message(mute_message, admin_fd);
+            // Broadcast to admin's current room
+            if (client_current_room.count(admin_fd) && !client_current_room[admin_fd].empty()) {
+                string current_room = client_current_room[admin_fd];
+                string mute_message = target_username + " has been muted by " + admin_username;
+                broadcast_message_to_room(mute_message, current_room, admin_fd);
+            }
             
             cout << "Admin " << admin_username << " muted user " << target_username << endl;
+            log_server_event("Admin '" + admin_username + "' muted user '" + target_username + "'");
         } else {
             string error_msg = "ADMIN_ERROR:User '" + target_username + "' not found.";
             string encrypted_error = encrypt_message(error_msg, ADMIN_PASSWORD);
@@ -233,22 +436,23 @@ void handle_admin_command(const string& message, int admin_fd) {
         }
     }
     else if (message.find("admin.kick ") == 0) {
-        string target_username = message.substr(11); // Remove "admin.kick "
+        string target_username = message.substr(11);
         int target_fd = find_client_by_username(target_username);
         
         if (target_fd != -1) {
-            // Notify the target user they are being kicked (encrypt notification)
             string kick_notification = "ADMIN_KICK:You have been kicked by an administrator.";
-            string encrypted_notification = encrypt_message(kick_notification, ADMIN_PASSWORD);
-            send(target_fd, encrypted_notification.c_str(), encrypted_notification.length(), 0);
+            string encrypted_kick = encrypt_message(kick_notification, ADMIN_PASSWORD);
+            send(target_fd, encrypted_kick.c_str(), encrypted_kick.length(), 0);
             
-            // Broadcast kick message
-            string kick_message = target_username + " has been kicked by " + admin_username;
-            broadcast_message(kick_message, admin_fd);
+            // Broadcast to target's current room
+            if (client_current_room.count(target_fd) && !client_current_room[target_fd].empty()) {
+                string target_room = client_current_room[target_fd];
+                string kick_message = target_username + " has been kicked by " + admin_username;
+                broadcast_message_to_room(kick_message, target_room, admin_fd);
+            }
             
             cout << "Admin " << admin_username << " kicked user " << target_username << endl;
-            
-            // Remove the client (this will also broadcast leave message)
+            log_server_event("Admin '" + admin_username + "' kicked user '" + target_username + "'");
             remove_client(target_fd);
         } else {
             string error_msg = "ADMIN_ERROR:User '" + target_username + "' not found.";
@@ -257,57 +461,97 @@ void handle_admin_command(const string& message, int admin_fd) {
         }
     }
     else if (message.find("admin.unmute ") == 0) {
-        string target_username = message.substr(13); // Remove "admin.unmute "
+        string target_username = message.substr(13);
         int target_fd = find_client_by_username(target_username);
         
         if (target_fd != -1) {
             muted_clients[target_fd] = false;
             
-            // Notify the target user they are unmuted (encrypt notification)
             string unmute_notification = "ADMIN_UNMUTE:You have been unmuted by an administrator.";
-            string encrypted_notification = encrypt_message(unmute_notification, ADMIN_PASSWORD);
-            send(target_fd, encrypted_notification.c_str(), encrypted_notification.length(), 0);
+            string encrypted_unmute = encrypt_message(unmute_notification, ADMIN_PASSWORD);
+            send(target_fd, encrypted_unmute.c_str(), encrypted_unmute.length(), 0);
             
-            // Broadcast unmute message
-            string unmute_message = target_username + " has been unmuted by " + admin_username;
-            broadcast_message(unmute_message, admin_fd);
+            // Broadcast to admin's current room
+            if (client_current_room.count(admin_fd) && !client_current_room[admin_fd].empty()) {
+                string current_room = client_current_room[admin_fd];
+                string unmute_message = target_username + " has been unmuted by " + admin_username;
+                broadcast_message_to_room(unmute_message, current_room, admin_fd);
+            }
             
             cout << "Admin " << admin_username << " unmuted user " << target_username << endl;
+            log_server_event("Admin '" + admin_username + "' unmuted user '" + target_username + "'");
         } else {
             string error_msg = "ADMIN_ERROR:User '" + target_username + "' not found.";
             string encrypted_error = encrypt_message(error_msg, ADMIN_PASSWORD);
             send(admin_fd, encrypted_error.c_str(), encrypted_error.length(), 0);
         }
     }
-}
-
-void load_existing_history() {
-    ifstream file(HISTORY_FILENAME);
-    if (file.is_open()) {
-        string line;
-        while (getline(file, line)) {
-            message_history.push_back(line);
-        }
-        file.close();
+    else if (message.find("admin.removeroom ") == 0) {
+        string room_name = message.substr(17); // Remove "admin.removeroom "
         
-        // Keep only last 100 messages in memory
-        if (message_history.size() > 100) {
-            message_history.erase(message_history.begin(), 
-                                message_history.end() - 100);
+        // Check if room exists
+        if (chat_rooms.find(room_name) == chat_rooms.end()) {
+            string error_msg = "ADMIN_ERROR:Room '" + room_name + "' does not exist.";
+            string encrypted_error = encrypt_message(error_msg, ADMIN_PASSWORD);
+            send(admin_fd, encrypted_error.c_str(), encrypted_error.length(), 0);
+            return;
         }
         
-        cout << "Loaded " << message_history.size() << " messages from history." << endl;
+        // Check if trying to remove the general room
+        if (room_name == "general") {
+            string error_msg = "ADMIN_ERROR:Cannot remove the general room.";
+            string encrypted_error = encrypt_message(error_msg, ADMIN_PASSWORD);
+            send(admin_fd, encrypted_error.c_str(), encrypted_error.length(), 0);
+            return;
+        }
+        
+        // Kick all users from the room first
+        set<int> users_to_kick;
+        for (int client_fd : chat_rooms[room_name].clients) {
+            users_to_kick.insert(client_fd);
+        }
+        
+        for (int client_fd : users_to_kick) {
+            if (client_current_room.count(client_fd) && client_current_room[client_fd] == room_name) {
+                client_current_room[client_fd] = ""; // Remove from room
+                
+                // Send notification to user
+                string kick_msg = "ROOM_DELETED:Room '" + room_name + "' has been deleted by an administrator.";
+                send(client_fd, kick_msg.c_str(), kick_msg.length(), 0);
+            }
+        }
+        
+        // Remove the room from chat_rooms
+        chat_rooms.erase(room_name);
+        
+        // Delete the history file
+        string history_file = ROOMS_LOGS_DIR + "/" + room_name + "_history.txt";
+        if (remove(history_file.c_str()) == 0) {
+            log_server_event("History file deleted: " + history_file);
+        } else {
+            log_server_event("Warning: Could not delete history file: " + history_file);
+        }
+        
+        // Save updated rooms list to make removal persistent
+        save_rooms_list();
+        
+        // Notify admin
+        string success_msg = "ADMIN_SUCCESS:Room '" + room_name + "' deleted successfully.";
+        string encrypted_success = encrypt_message(success_msg, ADMIN_PASSWORD);
+        send(admin_fd, encrypted_success.c_str(), encrypted_success.length(), 0);
+        
+        cout << "Admin " << admin_username << " deleted room: " << room_name << endl;
+        log_server_event("Admin '" + admin_username + "' deleted room '" + room_name + "'");
+        
+        // Broadcast to all users that a room has been removed
+        string announcement = "ROOM_ANNOUNCEMENT:Room '" + room_name + "' has been deleted by " + admin_username;
+        for (int client_fd : client_sockets) {
+            if (client_fd != admin_fd) {
+                send(client_fd, announcement.c_str(), announcement.length(), 0);
+            }
+        }
     }
 }
-
-#ifdef __linux__
-bool add_to_epoll(int epoll_fd, int fd, uint32_t events) {
-    struct epoll_event ev;
-    ev.events = events;
-    ev.data.fd = fd;
-    return epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &ev) == 0;
-}
-#endif
 
 int main(int argc, char* argv[]) {
     if (argc != 4) {
@@ -317,24 +561,62 @@ int main(int argc, char* argv[]) {
     const int PORT = stoi(argv[1]);
     SERVER_PASSWORD = argv[2];
     ADMIN_PASSWORD = argv[3];
-
-    // Get chat name and setup history file
-    cout << "Enter chat room name: ";
-    getline(cin, CHAT_NAME);
-    HISTORY_FILENAME = CHAT_NAME + "_history.txt";
     
-    // Load existing message history
-    load_existing_history();
+    // Get server name from user
+    string server_name;
+    cout << "Enter server name: ";
+    getline(cin, server_name);
+    
+    // Create logs directory structure
+    string logs_dir = "logs/" + server_name;
+    string rooms_dir = logs_dir + "/rooms";
+    
+    // Set global variable for rooms logs directory
+    ROOMS_LOGS_DIR = rooms_dir;
+    
+    // Create directories if they don't exist
+    system(("mkdir -p " + logs_dir).c_str());
+    system(("mkdir -p " + rooms_dir).c_str());
+    
+    cout << "Logs will be stored in: " << logs_dir << endl;
+    
+    // Create server log file
+    string server_log_file = logs_dir + "/server.log";
+    ofstream server_log(server_log_file, ios::app);
+    if (server_log.is_open()) {
+        time_t now = time(0);
+        char* dt = ctime(&now);
+        dt[strlen(dt)-1] = '\0'; // Remove newline
+        server_log << "[" << dt << "] Server started on port " << PORT << endl;
+        server_log << "[" << dt << "] Server name: " << server_name << endl;
+        server_log.close();
+    }
+    
+    log_server_event("Logging system initialized - logs directory: " + logs_dir);
 
+    // Create default rooms
+    chat_rooms["general"] = ChatRoom("general", rooms_dir);
+    
+    // Load persistent rooms from previous sessions
+    load_rooms_list();
+    
+    cout << "Multi-room chat server starting..." << endl;
+    cout << "Default rooms created: general" << endl;
+    
+    log_server_event("Default rooms initialized: general");
+    log_server_event("Room logs directory: " + rooms_dir);
+    
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd == -1) {
         cerr << "Error: Failed to create socket." << endl;
+        log_server_event("ERROR: Failed to create socket");
         return 1;
     }
 
     int opt = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
         cerr << "Error: setsockopt failed." << endl;
+        log_server_event("ERROR: setsockopt failed");
         return 1;
     }
 
@@ -346,63 +628,51 @@ int main(int argc, char* argv[]) {
 
     if (::bind(server_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
         cerr << "Error: Failed to bind socket." << endl;
+        log_server_event("ERROR: Failed to bind socket");
         close(server_fd);
         return 1;
     }
 
     if (listen(server_fd, 5) < 0) {
         cerr << "Error: Failed to listen on socket." << endl;
+        log_server_event("ERROR: Failed to listen on socket");
         close(server_fd);
         return 1;
     }
     
     set_non_blocking(server_fd);
 
-#ifdef __APPLE__
     int kq_fd = kqueue();
     if (kq_fd == -1) {
         cerr << "Error: kqueue failed." << endl;
+        log_server_event("ERROR: kqueue failed");
         return 1;
     }
 
     struct kevent change_event;
-    EV_SET(&change_event, server_fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
-    kevent(kq_fd, &change_event, 1, NULL, 0, NULL);
+        EV_SET(&change_event, server_fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+    if (kevent(kq_fd, &change_event, 1, NULL, 0, NULL) == -1) {
+        log_server_event("ERROR: Failed to add server socket to event loop");
+        return 1;
+    }
 
     const int MAX_EVENTS = 128;
     struct kevent event_list[MAX_EVENTS];
-    
-    cout << "Chat room '" << CHAT_NAME << "' started on port " << PORT << " (macOS/kqueue)" << endl;
-#elif defined(__linux__)
-    epoll_fd = epoll_create1(0);
-    if (epoll_fd == -1) {
-        cerr << "Error: epoll_create1 failed." << endl;
-        return 1;
-    }
 
-    if (!add_to_epoll(epoll_fd, server_fd, EPOLLIN | EPOLLET)) {
-        cerr << "Error: Failed to add server socket to epoll." << endl;
-        return 1;
-    }
-
-    const int MAX_EVENTS = 128;
-    struct epoll_event events[MAX_EVENTS];
-    
-    cout << "Chat room '" << CHAT_NAME << "' started on port " << PORT << " (Linux/epoll)" << endl;
-#endif
-
-    cout << "History file: " << HISTORY_FILENAME << endl;
+    cout << "Server started on port " << PORT << endl;
+    cout << "Server name: " << server_name << endl;
     cout << "Regular password: " << SERVER_PASSWORD << endl;
     cout << "Admin password: " << ADMIN_PASSWORD << endl;
     cout << "Encryption enabled using admin password as key for all messages" << endl;
+    
+    log_server_event("Server startup complete - listening on port " + to_string(PORT));
+    log_server_event("Server configuration - Port: " + to_string(PORT) + ", Server name: " + server_name);
 
     while (true) {
-        int num_events;
-        
-#ifdef __APPLE__
-        num_events = kevent(kq_fd, NULL, 0, event_list, MAX_EVENTS, NULL);
+        int num_events = kevent(kq_fd, NULL, 0, event_list, MAX_EVENTS, NULL);
         if (num_events < 0) {
             cerr << "Error: kevent failed in event loop." << endl;
+            log_server_event("ERROR: kevent failed in event loop");
             continue;
         }
 
@@ -410,47 +680,35 @@ int main(int argc, char* argv[]) {
             int event_fd = event_list[i].ident;
 
             if (event_list[i].flags & EV_ERROR || event_list[i].flags & EV_EOF) {
+                log_server_event("Client " + to_string(event_fd) + " connection error or EOF");
                 remove_client(event_fd);
                 continue;
             }
 
             if (event_fd == server_fd) {
-#elif defined(__linux__)
-        num_events = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
-        if (num_events < 0) {
-            cerr << "Error: epoll_wait failed in event loop." << endl;
-            continue;
-        }
-
-        for (int i = 0; i < num_events; ++i) {
-            int event_fd = events[i].data.fd;
-
-            if ((events[i].events & EPOLLERR) || (events[i].events & EPOLLHUP)) {
-                remove_client(event_fd);
-                continue;
-            }
-
-            if (event_fd == server_fd) {
-#endif
                 sockaddr_in client_addr;
                 socklen_t client_addr_len = sizeof(client_addr);
                 int client_socket = accept(server_fd, (struct sockaddr*)&client_addr, &client_addr_len);
-                if (client_socket == -1) continue;
+                if (client_socket == -1) {
+                    log_server_event("ERROR: Failed to accept client connection");
+                    continue;
+                }
                 
                 set_non_blocking(client_socket);
 
-                // Add the new client to the map as unauthenticated
                 authenticated_clients[client_socket] = false;
-                client_auth_stage[client_socket] = 0; // Expecting password first
+                client_auth_stage[client_socket] = 0;
                 admin_clients[client_socket] = false;
                 muted_clients[client_socket] = false;
+                client_current_room[client_socket] = ""; // Initialize as empty string
+                
+                log_server_event("New client connected from " + string(inet_ntoa(client_addr.sin_addr)) + ":" + to_string(ntohs(client_addr.sin_port)));
+                log_server_event("Client " + to_string(client_socket) + " added to event loop");
 
-#ifdef __APPLE__
                 EV_SET(&change_event, client_socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
-                kevent(kq_fd, &change_event, 1, NULL, 0, NULL);
-#elif defined(__linux__)
-                add_to_epoll(epoll_fd, client_socket, EPOLLIN | EPOLLET);
-#endif
+                if (kevent(kq_fd, &change_event, 1, NULL, 0, NULL) == -1) {
+                    log_server_event("ERROR: Failed to add client " + to_string(client_socket) + " to event loop");
+                }
             } else {
                 char buffer[1024];
                 ssize_t bytes_read = recv(event_fd, buffer, sizeof(buffer), 0);
@@ -459,32 +717,54 @@ int main(int argc, char* argv[]) {
                     string received_message(buffer, bytes_read);
 
                     if (authenticated_clients.at(event_fd)) {
-                        // Decrypt the received message
                         string decrypted_message = decrypt_message(received_message, ADMIN_PASSWORD);
                         
+                        // Check for room commands
+                        if (decrypted_message.find("/join ") == 0 || 
+                            decrypted_message == "/rooms" || 
+                            decrypted_message == "/who") {
+                            log_server_event("Room command executed: '" + decrypted_message + "' by '" + client_usernames[event_fd] + "'");
+                            handle_room_command(decrypted_message, event_fd);
+                        }
                         // Check if this is an admin command
-                        if (admin_clients[event_fd] && decrypted_message.find("admin.") == 0) {
+                        else if (admin_clients[event_fd] && (decrypted_message.find("admin.") == 0)) {
+                            log_server_event("Admin command executed: '" + decrypted_message + "' by '" + client_usernames[event_fd] + "'");
                             handle_admin_command(decrypted_message, event_fd);
                         } else {
                             // Check if user is muted
                             if (muted_clients[event_fd]) {
                                 string mute_reminder = "MUTED:You are muted and cannot send messages.";
-                                string encrypted_reminder = encrypt_message(mute_reminder, ADMIN_PASSWORD);
-                                send(event_fd, encrypted_reminder.c_str(), encrypted_reminder.length(), 0);
+                                send(event_fd, mute_reminder.c_str(), mute_reminder.length(), 0);
                             } else {
-                                // Save regular messages to history
-                                save_message_to_history(decrypted_message);
+                                // Check if user is in a room
+                                cout << "User " << client_usernames[event_fd] << " sending message. Checking room status..." << endl;
                                 
-                                // Fully authenticated and not muted, broadcast the decrypted message
-                                broadcast_message(decrypted_message, event_fd);
+                                if (client_current_room.count(event_fd) && !client_current_room[event_fd].empty()) {
+                                    string current_room = client_current_room[event_fd];
+                                    
+                                    // Find the room and save message
+                                    auto room_it = chat_rooms.find(current_room);
+                                    if (room_it != chat_rooms.end()) {
+                                        room_it->second.save_message(decrypted_message);
+                                        
+                                        // Log message sent to room
+                                        log_server_event("Message sent to room '" + current_room + "' by '" + client_usernames[event_fd] + "'");
+                                        
+                                        // Broadcast to room
+                                        broadcast_message_to_room(decrypted_message, current_room, event_fd);
+                                    }
+                                } else {
+                                    // User not in any room
+                                    string error_msg = "ROOM_ERROR:You must join a room first. Use /join <roomname>";
+                                    send(event_fd, error_msg.c_str(), error_msg.length(), 0);
+                                }
                             }
                         }
                     } else {
-                        // Handle authentication stages (these are not encrypted)
+                        // Handle authentication stages
                         int stage = client_auth_stage[event_fd];
                         
                         if (stage == 0) {
-                            // Expecting password
                             bool is_admin = false;
                             if (received_message == ADMIN_PASSWORD) {
                                 is_admin = true;
@@ -495,9 +775,8 @@ int main(int argc, char* argv[]) {
                                 continue;
                             }
                             
-                            client_auth_stage[event_fd] = 1; // Move to username stage
+                            client_auth_stage[event_fd] = 1;
                             
-                            // Send response with encryption key
                             string response;
                             if (is_admin) {
                                 response = "ADMIN_KEY:" + ADMIN_PASSWORD;
@@ -506,8 +785,8 @@ int main(int argc, char* argv[]) {
                             }
                             send(event_fd, response.c_str(), response.length(), 0);
                             cout << "Client " << event_fd << (is_admin ? " (ADMIN)" : "") << " password authenticated. Encryption key sent. Waiting for username." << endl;
+                            log_server_event("Client " + to_string(event_fd) + (is_admin ? " (ADMIN)" : "") + " password authenticated");
                         } else if (stage == 1) {
-                            // Expecting username
                             string username = received_message;
                             if (admin_clients[event_fd]) {
                                 username = "[ADMIN] " + username;
@@ -516,21 +795,43 @@ int main(int argc, char* argv[]) {
                             authenticated_clients[event_fd] = true;
                             client_auth_stage[event_fd] = 2;
                             client_sockets.push_back(event_fd);
-                            
+
                             send(event_fd, "OK", 2, 0);
                             
-                            // Load message history for the new client
-                            load_message_history(event_fd);
+                            log_server_event("User '" + username + "' successfully authenticated");
+
+                            // Auto-join the "general" room
+                            string default_room = "general";
                             
-                            // Broadcast join message
-                            string join_message = username + " has joined the chat!";
-                            broadcast_message(join_message, event_fd);
-                            cout << "User '" << username << "' (client " << event_fd << ") has joined the chat." << endl;
+                            auto room_it = chat_rooms.find(default_room);
+                            if (room_it != chat_rooms.end()) {
+                                room_it->second.clients.insert(event_fd);
+                                client_current_room[event_fd] = default_room;
+
+                                // Notify the client (send unencrypted since it's a system message)
+                                string join_info = "ROOM_JOINED:" + default_room;
+                                send(event_fd, join_info.c_str(), join_info.length(), 0);
+
+                                // Small delay to ensure ROOM_JOINED is processed first
+                                usleep(50000); // 50ms delay
+
+                                // Send recent history
+                                room_it->second.send_history_to_client(event_fd, ADMIN_PASSWORD);
+
+                                // Broadcast join message to other users in general
+                                string join_msg = username + " has joined " + default_room;
+                                broadcast_message_to_room(join_msg, default_room, event_fd);
+
+                                log_server_event("User '" + username + "' connected and auto-joined room '" + default_room + "'");
+                            }
+
                         }
                     }
                 } else if (bytes_read == 0) {
+                    log_server_event("Client " + to_string(event_fd) + " disconnected (connection closed)");
                     remove_client(event_fd);
                 } else if (errno != EWOULDBLOCK && errno != EAGAIN) {
+                    log_server_event("Client " + to_string(event_fd) + " disconnected (error: " + strerror(errno) + ")");
                     remove_client(event_fd);
                 }
             }

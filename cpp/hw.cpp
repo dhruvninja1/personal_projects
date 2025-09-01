@@ -3,16 +3,14 @@
 #include <vector>
 using namespace std;
 
-int main(int argc, char* argv[]){
+int main(){
     int a;
     cin >> a;
-    if (a%10 >= 5){
-        a += (10-a%10);
+    if (a % 5 == 0 || (a % 3 == 0 && a <= 20)){
+        cout << "YES";
     }
     else{
-        a -= a%10;
+        cout << "NO";
     }
-    cout << a;
-    
 }
 

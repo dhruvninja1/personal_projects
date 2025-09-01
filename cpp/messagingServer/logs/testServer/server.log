@@ -1,0 +1,85 @@
+[Sun Aug 31 14:21:20 2025] Server started on port 8080
+[Sun Aug 31 14:21:20 2025] Server name: testServer
+[Sun Aug 31 14:21:20 2025] Logging system initialized - logs directory: logs/testServer
+[Sun Aug 31 14:21:20 2025] Default rooms initialized: general, random
+[Sun Aug 31 14:21:20 2025] Room logs directory: logs/testServer/rooms
+[Sun Aug 31 14:21:20 2025] Server startup complete - listening on port 8080
+[Sun Aug 31 14:21:20 2025] Server configuration - Port: 8080, Server name: testServer
+[Sun Aug 31 14:49:05 2025] New client connected from 127.0.0.1:59730
+[Sun Aug 31 14:49:05 2025] Client 5 added to event loop
+[Sun Aug 31 14:49:05 2025] Client 5 password authenticated
+[Sun Aug 31 14:49:05 2025] User 'test' successfully authenticated
+[Sun Aug 31 14:49:05 2025] User 'test' connected and auto-joined room 'general'
+[Sun Aug 31 14:49:11 2025] Message sent to room 'general' by 'test'
+[Sun Aug 31 14:49:19 2025] Message sent to room 'general' by 'test'
+[Sun Aug 31 14:49:23 2025] Client 5 connection error or EOF
+[Sun Aug 31 14:49:23 2025] User 'test' disconnected from room 'general'
+[Sun Aug 31 15:16:58 2025] Server started on port 8080
+[Sun Aug 31 15:16:58 2025] Server name: testServer
+[Sun Aug 31 15:16:58 2025] Logging system initialized - logs directory: logs/testServer
+[Sun Aug 31 15:16:58 2025] Default rooms initialized: general
+[Sun Aug 31 15:16:58 2025] Room logs directory: logs/testServer/rooms
+[Sun Aug 31 15:16:58 2025] Server startup complete - listening on port 8080
+[Sun Aug 31 15:16:58 2025] Server configuration - Port: 8080, Server name: testServer
+[Sun Aug 31 15:17:48 2025] New client connected from 127.0.0.1:61706
+[Sun Aug 31 15:17:48 2025] Client 5 added to event loop
+[Sun Aug 31 15:17:48 2025] Client 5 password authenticated
+[Sun Aug 31 15:17:48 2025] User 'test' successfully authenticated
+[Sun Aug 31 15:17:48 2025] User 'test' connected and auto-joined room 'general'
+[Sun Aug 31 15:20:42 2025] New client connected from 127.0.0.1:62072
+[Sun Aug 31 15:20:42 2025] Client 6 added to event loop
+[Sun Aug 31 15:20:42 2025] Client 6 (ADMIN) password authenticated
+[Sun Aug 31 15:20:42 2025] User '[ADMIN] admin' successfully authenticated
+[Sun Aug 31 15:20:42 2025] User '[ADMIN] admin' connected and auto-joined room 'general'
+[Sun Aug 31 15:20:45 2025] Message sent to room 'general' by '[ADMIN] admin'
+[Sun Aug 31 15:20:49 2025] Admin command executed: 'admin.mute' by '[ADMIN] admin'
+[Sun Aug 31 15:21:00 2025] Admin command executed: 'admin.mute test' by '[ADMIN] admin'
+[Sun Aug 31 15:21:00 2025] Admin '[ADMIN] admin' muted user 'test'
+[Sun Aug 31 15:21:09 2025] Admin command executed: 'admin.unmute test' by '[ADMIN] admin'
+[Sun Aug 31 15:21:09 2025] Admin '[ADMIN] admin' unmuted user 'test'
+[Sun Aug 31 15:37:15 2025] Server started on port 8080
+[Sun Aug 31 15:37:15 2025] Server name: testServer
+[Sun Aug 31 15:37:15 2025] Logging system initialized - logs directory: logs/testServer
+[Sun Aug 31 15:37:15 2025] Default rooms initialized: general
+[Sun Aug 31 15:37:15 2025] Room logs directory: logs/testServer/rooms
+[Sun Aug 31 15:37:15 2025] Server startup complete - listening on port 8080
+[Sun Aug 31 15:37:15 2025] Server configuration - Port: 8080, Server name: testServer
+[Sun Aug 31 15:37:21 2025] New client connected from 127.0.0.1:64252
+[Sun Aug 31 15:37:21 2025] Client 5 added to event loop
+[Sun Aug 31 15:37:21 2025] Client 5 password authenticated
+[Sun Aug 31 15:37:21 2025] User 'test' successfully authenticated
+[Sun Aug 31 15:37:21 2025] User 'test' connected and auto-joined room 'general'
+[Sun Aug 31 15:37:46 2025] New client connected from 127.0.0.1:64308
+[Sun Aug 31 15:37:46 2025] Client 6 added to event loop
+[Sun Aug 31 15:37:46 2025] Client 6 (ADMIN) password authenticated
+[Sun Aug 31 15:37:46 2025] User '[ADMIN] admin' successfully authenticated
+[Sun Aug 31 15:37:46 2025] User '[ADMIN] admin' connected and auto-joined room 'general'
+[Sun Aug 31 15:37:53 2025] Admin command executed: 'admin.mute test' by '[ADMIN] admin'
+[Sun Aug 31 15:37:53 2025] Admin '[ADMIN] admin' muted user 'test'
+[Sun Aug 31 15:37:59 2025] Admin command executed: 'admin.unmute test' by '[ADMIN] admin'
+[Sun Aug 31 15:37:59 2025] Admin '[ADMIN] admin' unmuted user 'test'
+[Sun Aug 31 15:38:11 2025] Admin command executed: 'cmd.makeroom t' by '[ADMIN] admin'
+[Sun Aug 31 15:38:11 2025] Rooms list saved to logs/testServer/rooms_list.txt
+[Sun Aug 31 15:38:11 2025] Admin '[ADMIN] admin' created room 't'
+[Sun Aug 31 15:38:15 2025] Admin command executed: 'admin.removeroom t' by '[ADMIN] admin'
+[Sun Aug 31 15:38:21 2025] Admin command executed: 'admin.removeroomt' by '[ADMIN] admin'
+[Sun Aug 31 15:38:26 2025] Room command executed: '/rooms' by '[ADMIN] admin'
+[Sun Aug 31 15:38:38 2025] Admin command executed: 'admin.removeroom t' by '[ADMIN] admin'
+[Sun Aug 31 15:39:18 2025] Message sent to room 'general' by '[ADMIN] admin'
+[Sun Aug 31 15:39:25 2025] Message sent to room 'general' by 'test'
+[Sun Aug 31 15:39:32 2025] Message sent to room 'general' by 'test'
+[Sun Aug 31 15:39:35 2025] Message sent to room 'general' by 'test'
+[Sun Aug 31 15:39:39 2025] Admin command executed: 'admin.makeroomcmd.makeroom t' by '[ADMIN] admin'
+[Sun Aug 31 15:39:43 2025] Room command executed: '/rooms' by '[ADMIN] admin'
+[Sun Aug 31 15:39:53 2025] Admin command executed: 'admin.removeroom t' by '[ADMIN] admin'
+[Sun Aug 31 15:40:07 2025] Room command executed: '/join t' by '[ADMIN] admin'
+[Sun Aug 31 15:40:07 2025] User '[ADMIN] admin' left room 'general'
+[Sun Aug 31 15:40:07 2025] User '[ADMIN] admin' joined room 't'
+[Sun Aug 31 15:40:10 2025] Room command executed: '/join t' by 'test'
+[Sun Aug 31 15:40:10 2025] User 'test' left room 'general'
+[Sun Aug 31 15:40:10 2025] User 'test' joined room 't'
+[Sun Aug 31 15:40:13 2025] Message sent to room 't' by '[ADMIN] admin'
+[Sun Aug 31 15:40:15 2025] Message sent to room 't' by '[ADMIN] admin'
+[Sun Aug 31 15:40:17 2025] Message sent to room 't' by 'test'
+[Sun Aug 31 15:40:22 2025] Message sent to room 't' by 'test'
+[Sun Aug 31 15:40:25 2025] Message sent to room 't' by 'test'
