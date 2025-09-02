@@ -1,5 +1,0 @@
-admin - hey
-admin - gang
-test - gangalang
-test - @admin
-test - @admin hi

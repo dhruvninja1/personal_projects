@@ -40,7 +40,7 @@ struct ChatRoom {
     
     void load_history();
     void save_message(const string& message);
-    void send_history_to_client(int client_fd, const string& admin_password);
+    void send_history_to_client(int client_fd);
 };
 
 void broadcast_message_to_room(const string& message, const string& room_name, int sender_fd = -1);
@@ -48,8 +48,6 @@ bool set_non_blocking(int fd);
 void remove_client(int fd);
 void handle_admin_command(const string& message, int admin_fd);
 void handle_room_command(const string& message, int client_fd);
-string encrypt_message(const string& message, const string& key);
-string decrypt_message(const string& encrypted, const string& key);
 string process_mentions(const string& message);
 void log_server_event(const string& event);
 void save_rooms_list();
@@ -66,19 +64,6 @@ map<int, int> client_auth_stage;
 map<int, bool> admin_clients;
 map<int, bool> muted_clients;
 map<int, string> client_current_room; // Track which room each client is in
-
-// XOR encryption using admin password as key
-string encrypt_message(const string& message, const string& key) {
-    string encrypted = message;
-    for (size_t i = 0; i < message.length(); ++i) {
-        encrypted[i] = message[i] ^ key[i % key.length()];
-    }
-    return encrypted;
-}
-
-string decrypt_message(const string& encrypted, const string& key) {
-    return encrypt_message(encrypted, key);
-}
 
 // ChatRoom method implementations
 void ChatRoom::load_history() {
@@ -101,14 +86,19 @@ void ChatRoom::load_history() {
 }
 
 void ChatRoom::save_message(const string& message) {
+    // Save only normal chat (exclude system/admin messages)
+    if (message.find("ROOM_") == 0 || 
+        message.find("USERS_LIST:") == 0 || 
+        message.find("ADMIN_") == 0 || 
+        message.find("MUTED:") == 0) {
+        return;
+    }
+
     message_history.push_back(message);
-    
-    // Keep only last 100 messages in memory
     if (message_history.size() > 100) {
         message_history.pop_front();
     }
-    
-    // Save to file
+
     ofstream file(history_filename, ios::app);
     if (file.is_open()) {
         file << message << endl;
@@ -116,14 +106,13 @@ void ChatRoom::save_message(const string& message) {
     }
 }
 
-void ChatRoom::send_history_to_client(int client_fd, const string& admin_password) {
+void ChatRoom::send_history_to_client(int client_fd) {
     // Send the last 50 messages to the newly connected client
     int start_index = max(0, (int)message_history.size() - 50);
     
     for (int i = start_index; i < (int)message_history.size(); i++) {
         string history_msg = "HISTORY:" + message_history[i];
-        string encrypted_history = encrypt_message(history_msg, admin_password);
-        send(client_fd, encrypted_history.c_str(), encrypted_history.length(), 0);
+        send(client_fd, history_msg.c_str(), history_msg.length(), 0);
         usleep(10000); // Small delay to ensure messages arrive in order
     }
 }
@@ -230,14 +219,13 @@ void load_rooms_list() {
 void broadcast_message_to_room(const string& message, const string& room_name, int sender_fd) {
     auto room_it = chat_rooms.find(room_name);
     if (room_it == chat_rooms.end()) return;
-    
+
     string processed_message = process_mentions(message);
-    string encrypted_message = encrypt_message(processed_message, ADMIN_PASSWORD);
-    
+
     ChatRoom& room = room_it->second;
     for (int client_fd : room.clients) {
         if (client_fd != sender_fd) {
-            ssize_t bytes_sent = send(client_fd, encrypted_message.c_str(), encrypted_message.length(), 0);
+            ssize_t bytes_sent = send(client_fd, processed_message.c_str(), processed_message.length(), 0);
             if (bytes_sent == -1) {
                 if (errno != EWOULDBLOCK && errno != EAGAIN) {
                     cerr << "Error: Failed to send message to client " << client_fd << ". Closing socket." << endl;
@@ -296,6 +284,14 @@ void handle_room_command(const string& message, int client_fd) {
     if (message.find("/join ") == 0) {
         string room_name = message.substr(6); // Remove "/join "
         
+        // Trim whitespace and ensure clean room name
+        room_name.erase(0, room_name.find_first_not_of(" \t\r\n"));
+        room_name.erase(room_name.find_last_not_of(" \t\r\n") + 1);
+        
+        // Debug logging
+        cout << "Attempting to join room: '" << room_name << "'" << endl;
+        log_server_event("Join request for room: '" + room_name + "' by '" + client_usernames[client_fd] + "'");
+        
         // Check if room exists
         if (chat_rooms.find(room_name) == chat_rooms.end()) {
             string error_msg = "ROOM_ERROR:Room '" + room_name + "' does not exist. Use /rooms to see available rooms.";
@@ -321,17 +317,17 @@ void handle_room_command(const string& message, int client_fd) {
         if (room_it != chat_rooms.end()) {
             room_it->second.clients.insert(client_fd);
             client_current_room[client_fd] = room_name;
-            
-            // Send room info (unencrypted system message)
-            string room_info = "ROOM_JOINED:" + room_name;
-            send(client_fd, room_info.c_str(), room_info.length(), 0);
-            
+
+            // Notify the client
+            string join_info = "ROOM_JOINED:" + room_name;
+            send(client_fd, join_info.c_str(), join_info.length(), 0);
+
             // Small delay to ensure ROOM_JOINED is processed first
             usleep(50000); // 50ms delay
-            
-            // Send history
-            room_it->second.send_history_to_client(client_fd, ADMIN_PASSWORD);
-            
+
+            // Send recent history
+            room_it->second.send_history_to_client(client_fd);
+
             // Broadcast join message to new room
             string join_msg = client_usernames[client_fd] + " has joined " + room_name;
             broadcast_message_to_room(join_msg, room_name, client_fd);
@@ -382,8 +378,7 @@ void handle_admin_command(const string& message, int admin_fd) {
         // Check if room already exists
         if (chat_rooms.find(room_name) != chat_rooms.end()) {
             string error_msg = "ADMIN_ERROR:Room '" + room_name + "' already exists.";
-            string encrypted_error = encrypt_message(error_msg, ADMIN_PASSWORD);
-            send(admin_fd, encrypted_error.c_str(), encrypted_error.length(), 0);
+            send(admin_fd, error_msg.c_str(), error_msg.length(), 0);
             return;
         }
         
@@ -395,8 +390,7 @@ void handle_admin_command(const string& message, int admin_fd) {
         
         // Notify admin
         string success_msg = "ADMIN_SUCCESS:Room '" + room_name + "' created successfully.";
-        string encrypted_success = encrypt_message(success_msg, ADMIN_PASSWORD);
-        send(admin_fd, encrypted_success.c_str(), encrypted_success.length(), 0);
+        send(admin_fd, success_msg.c_str(), success_msg.length(), 0);
         
         cout << "Admin " << admin_username << " created room: " << room_name << endl;
         log_server_event("Admin '" + admin_username + "' created room '" + room_name + "'");
@@ -417,8 +411,7 @@ void handle_admin_command(const string& message, int admin_fd) {
             muted_clients[target_fd] = true;
             
             string mute_notification = "ADMIN_MUTE:You have been muted by an administrator.";
-            string encrypted_mute = encrypt_message(mute_notification, ADMIN_PASSWORD);
-            send(target_fd, encrypted_mute.c_str(), encrypted_mute.length(), 0);
+            send(target_fd, mute_notification.c_str(), mute_notification.length(), 0);
             
             // Broadcast to admin's current room
             if (client_current_room.count(admin_fd) && !client_current_room[admin_fd].empty()) {
@@ -431,8 +424,7 @@ void handle_admin_command(const string& message, int admin_fd) {
             log_server_event("Admin '" + admin_username + "' muted user '" + target_username + "'");
         } else {
             string error_msg = "ADMIN_ERROR:User '" + target_username + "' not found.";
-            string encrypted_error = encrypt_message(error_msg, ADMIN_PASSWORD);
-            send(admin_fd, encrypted_error.c_str(), encrypted_error.length(), 0);
+            send(admin_fd, error_msg.c_str(), error_msg.length(), 0);
         }
     }
     else if (message.find("admin.kick ") == 0) {
@@ -441,8 +433,7 @@ void handle_admin_command(const string& message, int admin_fd) {
         
         if (target_fd != -1) {
             string kick_notification = "ADMIN_KICK:You have been kicked by an administrator.";
-            string encrypted_kick = encrypt_message(kick_notification, ADMIN_PASSWORD);
-            send(target_fd, encrypted_kick.c_str(), encrypted_kick.length(), 0);
+            send(target_fd, kick_notification.c_str(), kick_notification.length(), 0);
             
             // Broadcast to target's current room
             if (client_current_room.count(target_fd) && !client_current_room[target_fd].empty()) {
@@ -456,8 +447,7 @@ void handle_admin_command(const string& message, int admin_fd) {
             remove_client(target_fd);
         } else {
             string error_msg = "ADMIN_ERROR:User '" + target_username + "' not found.";
-            string encrypted_error = encrypt_message(error_msg, ADMIN_PASSWORD);
-            send(admin_fd, encrypted_error.c_str(), encrypted_error.length(), 0);
+            send(admin_fd, error_msg.c_str(), error_msg.length(), 0);
         }
     }
     else if (message.find("admin.unmute ") == 0) {
@@ -468,8 +458,7 @@ void handle_admin_command(const string& message, int admin_fd) {
             muted_clients[target_fd] = false;
             
             string unmute_notification = "ADMIN_UNMUTE:You have been unmuted by an administrator.";
-            string encrypted_unmute = encrypt_message(unmute_notification, ADMIN_PASSWORD);
-            send(target_fd, encrypted_unmute.c_str(), encrypted_unmute.length(), 0);
+            send(target_fd, unmute_notification.c_str(), unmute_notification.length(), 0);
             
             // Broadcast to admin's current room
             if (client_current_room.count(admin_fd) && !client_current_room[admin_fd].empty()) {
@@ -482,8 +471,7 @@ void handle_admin_command(const string& message, int admin_fd) {
             log_server_event("Admin '" + admin_username + "' unmuted user '" + target_username + "'");
         } else {
             string error_msg = "ADMIN_ERROR:User '" + target_username + "' not found.";
-            string encrypted_error = encrypt_message(error_msg, ADMIN_PASSWORD);
-            send(admin_fd, encrypted_error.c_str(), encrypted_error.length(), 0);
+            send(admin_fd, error_msg.c_str(), error_msg.length(), 0);
         }
     }
     else if (message.find("admin.removeroom ") == 0) {
@@ -492,16 +480,14 @@ void handle_admin_command(const string& message, int admin_fd) {
         // Check if room exists
         if (chat_rooms.find(room_name) == chat_rooms.end()) {
             string error_msg = "ADMIN_ERROR:Room '" + room_name + "' does not exist.";
-            string encrypted_error = encrypt_message(error_msg, ADMIN_PASSWORD);
-            send(admin_fd, encrypted_error.c_str(), encrypted_error.length(), 0);
+            send(admin_fd, error_msg.c_str(), error_msg.length(), 0);
             return;
         }
         
         // Check if trying to remove the general room
         if (room_name == "general") {
             string error_msg = "ADMIN_ERROR:Cannot remove the general room.";
-            string encrypted_error = encrypt_message(error_msg, ADMIN_PASSWORD);
-            send(admin_fd, encrypted_error.c_str(), encrypted_error.length(), 0);
+            send(admin_fd, error_msg.c_str(), error_msg.length(), 0);
             return;
         }
         
@@ -537,8 +523,7 @@ void handle_admin_command(const string& message, int admin_fd) {
         
         // Notify admin
         string success_msg = "ADMIN_SUCCESS:Room '" + room_name + "' deleted successfully.";
-        string encrypted_success = encrypt_message(success_msg, ADMIN_PASSWORD);
-        send(admin_fd, encrypted_success.c_str(), encrypted_success.length(), 0);
+        send(admin_fd, success_msg.c_str(), success_msg.length(), 0);
         
         cout << "Admin " << admin_username << " deleted room: " << room_name << endl;
         log_server_event("Admin '" + admin_username + "' deleted room '" + room_name + "'");
@@ -650,7 +635,7 @@ int main(int argc, char* argv[]) {
     }
 
     struct kevent change_event;
-        EV_SET(&change_event, server_fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+    EV_SET(&change_event, server_fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
     if (kevent(kq_fd, &change_event, 1, NULL, 0, NULL) == -1) {
         log_server_event("ERROR: Failed to add server socket to event loop");
         return 1;
@@ -663,7 +648,7 @@ int main(int argc, char* argv[]) {
     cout << "Server name: " << server_name << endl;
     cout << "Regular password: " << SERVER_PASSWORD << endl;
     cout << "Admin password: " << ADMIN_PASSWORD << endl;
-    cout << "Encryption enabled using admin password as key for all messages" << endl;
+    cout << "Plain text communication (no encryption)" << endl;
     
     log_server_event("Server startup complete - listening on port " + to_string(PORT));
     log_server_event("Server configuration - Port: " + to_string(PORT) + ", Server name: " + server_name);
@@ -715,21 +700,24 @@ int main(int argc, char* argv[]) {
                 
                 if (bytes_read > 0) {
                     string received_message(buffer, bytes_read);
+                    
+                    // Debug: log all received messages
+                    cout << "Received from client " << event_fd << ": '" << received_message << "'" << endl;
 
                     if (authenticated_clients.at(event_fd)) {
-                        string decrypted_message = decrypt_message(received_message, ADMIN_PASSWORD);
+                        // No decryption needed - message is already plain text
                         
                         // Check for room commands
-                        if (decrypted_message.find("/join ") == 0 || 
-                            decrypted_message == "/rooms" || 
-                            decrypted_message == "/who") {
-                            log_server_event("Room command executed: '" + decrypted_message + "' by '" + client_usernames[event_fd] + "'");
-                            handle_room_command(decrypted_message, event_fd);
+                        if (received_message.find("/join ") == 0 || 
+                            received_message == "/rooms" || 
+                            received_message == "/who") {
+                            log_server_event("Room command executed: '" + received_message + "' by '" + client_usernames[event_fd] + "'");
+                            handle_room_command(received_message, event_fd);
                         }
                         // Check if this is an admin command
-                        else if (admin_clients[event_fd] && (decrypted_message.find("admin.") == 0)) {
-                            log_server_event("Admin command executed: '" + decrypted_message + "' by '" + client_usernames[event_fd] + "'");
-                            handle_admin_command(decrypted_message, event_fd);
+                        else if (admin_clients[event_fd] && (received_message.find("admin.") == 0)) {
+                            log_server_event("Admin command executed: '" + received_message + "' by '" + client_usernames[event_fd] + "'");
+                            handle_admin_command(received_message, event_fd);
                         } else {
                             // Check if user is muted
                             if (muted_clients[event_fd]) {
@@ -745,13 +733,13 @@ int main(int argc, char* argv[]) {
                                     // Find the room and save message
                                     auto room_it = chat_rooms.find(current_room);
                                     if (room_it != chat_rooms.end()) {
-                                        room_it->second.save_message(decrypted_message);
+                                        room_it->second.save_message(received_message);
                                         
                                         // Log message sent to room
                                         log_server_event("Message sent to room '" + current_room + "' by '" + client_usernames[event_fd] + "'");
                                         
                                         // Broadcast to room
-                                        broadcast_message_to_room(decrypted_message, current_room, event_fd);
+                                        broadcast_message_to_room(received_message, current_room, event_fd);
                                     }
                                 } else {
                                     // User not in any room
@@ -769,22 +757,17 @@ int main(int argc, char* argv[]) {
                             if (received_message == ADMIN_PASSWORD) {
                                 is_admin = true;
                                 admin_clients[event_fd] = true;
-                            } else if (received_message != SERVER_PASSWORD) {
+                                send(event_fd, "ADMIN_AUTH_SUCCESS", 18, 0);
+                            } else if (received_message == SERVER_PASSWORD) {
+                                send(event_fd, "AUTH_SUCCESS", 12, 0);
+                            } else {
                                 send(event_fd, "FAIL", 4, 0);
                                 remove_client(event_fd);
                                 continue;
                             }
                             
                             client_auth_stage[event_fd] = 1;
-                            
-                            string response;
-                            if (is_admin) {
-                                response = "ADMIN_KEY:" + ADMIN_PASSWORD;
-                            } else {
-                                response = "KEY:" + ADMIN_PASSWORD;
-                            }
-                            send(event_fd, response.c_str(), response.length(), 0);
-                            cout << "Client " << event_fd << (is_admin ? " (ADMIN)" : "") << " password authenticated. Encryption key sent. Waiting for username." << endl;
+                            cout << "Client " << event_fd << (is_admin ? " (ADMIN)" : "") << " password authenticated. Waiting for username." << endl;
                             log_server_event("Client " + to_string(event_fd) + (is_admin ? " (ADMIN)" : "") + " password authenticated");
                         } else if (stage == 1) {
                             string username = received_message;
@@ -808,7 +791,7 @@ int main(int argc, char* argv[]) {
                                 room_it->second.clients.insert(event_fd);
                                 client_current_room[event_fd] = default_room;
 
-                                // Notify the client (send unencrypted since it's a system message)
+                                // Notify the client
                                 string join_info = "ROOM_JOINED:" + default_room;
                                 send(event_fd, join_info.c_str(), join_info.length(), 0);
 
@@ -816,7 +799,7 @@ int main(int argc, char* argv[]) {
                                 usleep(50000); // 50ms delay
 
                                 // Send recent history
-                                room_it->second.send_history_to_client(event_fd, ADMIN_PASSWORD);
+                                room_it->second.send_history_to_client(event_fd);
 
                                 // Broadcast join message to other users in general
                                 string join_msg = username + " has joined " + default_room;
@@ -824,7 +807,6 @@ int main(int argc, char* argv[]) {
 
                                 log_server_event("User '" + username + "' connected and auto-joined room '" + default_room + "'");
                             }
-
                         }
                     }
                 } else if (bytes_read == 0) {

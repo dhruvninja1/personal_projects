@@ -1,7 +1,2 @@
 test - hi
-test - dihhiihihi
-admin - hi
-admin - cmd.removeroom t
-test - cmd.makeroom t
-test - cmd.makeroom t
-test - cmd.makeroom ti
+test - higng
