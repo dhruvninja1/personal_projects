@@ -1483,3 +1483,28 @@
 [Mon Sep  1 15:08:46 2025] Join request for room: 'general' by '[ADMIN] admin'
 [Mon Sep  1 15:08:46 2025] User '[ADMIN] admin' left room 'test'
 [Mon Sep  1 15:08:46 2025] User '[ADMIN] admin' joined room 'general'
+[Wed Sep  3 12:36:07 2025] Server started on port 8080
+[Wed Sep  3 12:36:07 2025] Server name: testServer
+[Wed Sep  3 12:36:07 2025] Logging system initialized - logs directory: logs/testServer
+[Wed Sep  3 12:36:07 2025] Loaded persistent room: test
+[Wed Sep  3 12:36:07 2025] Rooms list loaded from logs/testServer/rooms_list.txt
+[Wed Sep  3 12:36:07 2025] Default rooms initialized: general
+[Wed Sep  3 12:36:07 2025] Room logs directory: logs/testServer/rooms
+[Wed Sep  3 12:36:07 2025] Server startup complete - listening on port 8080
+[Wed Sep  3 12:36:07 2025] Server configuration - Port: 8080, Server name: testServer
+[Wed Sep  3 12:37:09 2025] New client connected from 127.0.0.1:61003
+[Wed Sep  3 12:37:09 2025] Client 5 added to event loop
+[Wed Sep  3 12:37:09 2025] Client 5 password authenticated
+[Wed Sep  3 12:37:09 2025] User 'test' successfully authenticated
+[Wed Sep  3 12:37:10 2025] User 'test' connected and auto-joined room 'general'
+[Wed Sep  3 12:37:10 2025] Room command executed: '/rooms' by 'test'
+[Wed Sep  3 12:37:16 2025] Client 5 connection error or EOF
+[Wed Sep  3 12:37:16 2025] User 'test' disconnected from room 'general'
+[Wed Sep  3 12:37:22 2025] New client connected from 127.0.0.1:61032
+[Wed Sep  3 12:37:22 2025] Client 5 added to event loop
+[Wed Sep  3 12:37:22 2025] Client 5 password authenticated
+[Wed Sep  3 12:37:22 2025] User 'test' successfully authenticated
+[Wed Sep  3 12:37:22 2025] User 'test' connected and auto-joined room 'general'
+[Wed Sep  3 12:37:22 2025] Room command executed: '/rooms' by 'test'
+[Wed Sep  3 12:49:41 2025] Client 5 connection error or EOF
+[Wed Sep  3 12:49:41 2025] User 'test' disconnected from room 'general'
