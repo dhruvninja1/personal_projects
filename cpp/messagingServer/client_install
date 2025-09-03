@@ -1,0 +1,44 @@
+#!/bin/bash
+mkdir "temporary_installer_folder"
+cd "temporary_installer_folder"
+
+if command -v git &> /dev/null
+then
+echo "Git already installed"
+else
+    echo "Git is not installed. Attempting to install..."
+    
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "Installing Apple's Command Line Tools..."
+        xcode-select --install
+        echo "Please follow the prompt to complete the installation."
+        
+    # Check if the OS is Linux with apt (e.g., Ubuntu, Debian)
+    elif command -v apt-get &> /dev/null; then
+        echo "Installing Git via apt-get..."
+        sudo apt-get update
+        sudo apt-get install git -y
+        
+    else
+        echo "Could not find a supported package manager to install Git."
+        echo "Please install Git manually."
+    fi
+fi
+
+
+
+git init
+git remote add origin "https://github.com/dhruvninja1/personal_projects.git"
+git config core.sparseCheckout true
+
+echo "cpp/messagingServer/ChatClientQt/build/Qt_6_9_2_for_macOS-Debug/ChatClientQt.app" >> .git/info/sparse-checkout
+git pull origin main
+
+if [ -d "/Applications/MonkeyChat.app" ]; then
+    rm -rf "/Applications/MonkeyChat.app"
+fi
+mv "cpp/messagingServer/ChatClientQt/build/Qt_6_9_2_for_macOS-Debug/ChatClientQt.app" /Applications/MonkeyChat.app
+
+cd ..
+
+rm -rf "temporary_installer_folder"
