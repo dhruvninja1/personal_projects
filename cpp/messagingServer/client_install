@@ -13,7 +13,6 @@ else
         xcode-select --install
         echo "Please follow the prompt to complete the installation."
         
-    # Check if the OS is Linux with apt (e.g., Ubuntu, Debian)
     elif command -v apt-get &> /dev/null; then
         echo "Installing Git via apt-get..."
         sudo apt-get update
