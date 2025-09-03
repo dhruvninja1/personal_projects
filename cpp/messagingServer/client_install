@@ -39,7 +39,7 @@ git pull origin main
 INFO_PLIST_PATH="cpp/messagingServer/ChatClientQt/ChatClientQt.app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleName MonkeyChat" "$INFO_PLIST_PATH"
 
-mv "cpp/messagingServer/ChatClientQt/ChatClientQt.app"/Applications/MonkeyChat.app
+mv "cpp/messagingServer/ChatClientQt/ChatClientQt.app" /Applications/MonkeyChat.app
 
 cd ..
 
