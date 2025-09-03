@@ -1,2 +1,0 @@
-set(__QT_DEPLOY_TARGET_ChatClientQt_FILE /Users/dhruvsharma/projects/personal_projects/cpp/messagingServer/ChatClientQt/build/Qt_6_9_2_for_macOS-Debug/ChatClientQt.app/Contents/MacOS/ChatClientQt)
-set(__QT_DEPLOY_TARGET_ChatClientQt_TYPE EXECUTABLE)

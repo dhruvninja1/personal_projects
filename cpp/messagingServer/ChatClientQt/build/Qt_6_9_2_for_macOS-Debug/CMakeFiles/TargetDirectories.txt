@@ -1,9 +1,0 @@
-/Users/dhruvsharma/projects/personal_projects/cpp/messagingServer/ChatClientQt/build/Qt_6_9_2_for_macOS-Debug/CMakeFiles/ChatClientQt.dir
-/Users/dhruvsharma/projects/personal_projects/cpp/messagingServer/ChatClientQt/build/Qt_6_9_2_for_macOS-Debug/CMakeFiles/edit_cache.dir
-/Users/dhruvsharma/projects/personal_projects/cpp/messagingServer/ChatClientQt/build/Qt_6_9_2_for_macOS-Debug/CMakeFiles/rebuild_cache.dir
-/Users/dhruvsharma/projects/personal_projects/cpp/messagingServer/ChatClientQt/build/Qt_6_9_2_for_macOS-Debug/CMakeFiles/list_install_components.dir
-/Users/dhruvsharma/projects/personal_projects/cpp/messagingServer/ChatClientQt/build/Qt_6_9_2_for_macOS-Debug/CMakeFiles/install.dir
-/Users/dhruvsharma/projects/personal_projects/cpp/messagingServer/ChatClientQt/build/Qt_6_9_2_for_macOS-Debug/CMakeFiles/install/local.dir
-/Users/dhruvsharma/projects/personal_projects/cpp/messagingServer/ChatClientQt/build/Qt_6_9_2_for_macOS-Debug/CMakeFiles/install/strip.dir
-/Users/dhruvsharma/projects/personal_projects/cpp/messagingServer/ChatClientQt/build/Qt_6_9_2_for_macOS-Debug/CMakeFiles/ChatClientQt_autogen_timestamp_deps.dir
-/Users/dhruvsharma/projects/personal_projects/cpp/messagingServer/ChatClientQt/build/Qt_6_9_2_for_macOS-Debug/CMakeFiles/ChatClientQt_autogen.dir

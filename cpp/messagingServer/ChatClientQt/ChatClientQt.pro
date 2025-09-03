@@ -4,6 +4,11 @@ QT       += network
 SOURCES  += main.cpp \
             mainwindow.cpp
 
+ICON = app_icons.icns
+macx {
+    QMAKE_INFO_PLIST = Info.plist
+}
+
 HEADERS  += mainwindow.h
 
 FORMS    += mainwindow.ui

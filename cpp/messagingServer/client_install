@@ -33,14 +33,15 @@ git init
 git remote add origin "https://github.com/dhruvninja1/personal_projects.git"
 git config core.sparseCheckout true
 
-echo "cpp/messagingServer/ChatClientQt/build/Qt_6_9_2_for_macOS-Debug/ChatClientQt.app" >> .git/info/sparse-checkout
+echo "cpp/messagingServer/ChatClientQt" >> .git/info/sparse-checkout
 git pull origin main
 
-INFO_PLIST_PATH="cpp/messagingServer/ChatClientQt/build/Qt_6_9_2_for_macOS-Debug/ChatClientQt.app/Contents/Info.plist"
+INFO_PLIST_PATH="cpp/messagingServer/ChatClientQt/ChatClientQt.app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleName MonkeyChat" "$INFO_PLIST_PATH"
 
-mv "cpp/messagingServer/ChatClientQt/build/Qt_6_9_2_for_macOS-Debug/ChatClientQt.app" /Applications/MonkeyChat.app
+mv "cpp/messagingServer/ChatClientQt/ChatClientQt.app"/Applications/MonkeyChat.app
 
 cd ..
 
 rm -rf "temporary_installer_folder"
+rm -rf ".git"
