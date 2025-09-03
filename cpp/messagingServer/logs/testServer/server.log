@@ -1508,3 +1508,12 @@
 [Wed Sep  3 12:37:22 2025] Room command executed: '/rooms' by 'test'
 [Wed Sep  3 12:49:41 2025] Client 5 connection error or EOF
 [Wed Sep  3 12:49:41 2025] User 'test' disconnected from room 'general'
+[Wed Sep  3 12:59:00 2025] Server started on port 8080
+[Wed Sep  3 12:59:00 2025] Server name: testServer
+[Wed Sep  3 12:59:00 2025] Logging system initialized - logs directory: logs/testServer
+[Wed Sep  3 12:59:00 2025] Loaded persistent room: test
+[Wed Sep  3 12:59:00 2025] Rooms list loaded from logs/testServer/rooms_list.txt
+[Wed Sep  3 12:59:00 2025] Default rooms initialized: general
+[Wed Sep  3 12:59:00 2025] Room logs directory: logs/testServer/rooms
+[Wed Sep  3 12:59:00 2025] Server startup complete - listening on port 8080
+[Wed Sep  3 12:59:00 2025] Server configuration - Port: 8080, Server name: testServer
