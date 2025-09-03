@@ -12,6 +12,7 @@ macx {
 HEADERS  += mainwindow.h
 
 FORMS    += mainwindow.ui
+CONFIG+=release
 
 # Uncomment if you add resources later
 # RESOURCES += resources.qrc
