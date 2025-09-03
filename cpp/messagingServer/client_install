@@ -25,7 +25,10 @@ else
     fi
 fi
 
-
+if [ -d "/Applications/MonkeyChat.app" ]; then
+    echo "Removing previous version"
+    rm -rf "/Applications/MonkeyChat.app"
+fi
 
 git init
 git remote add origin "https://github.com/dhruvninja1/personal_projects.git"
@@ -34,9 +37,9 @@ git config core.sparseCheckout true
 echo "cpp/messagingServer/ChatClientQt/build/Qt_6_9_2_for_macOS-Debug/ChatClientQt.app" >> .git/info/sparse-checkout
 git pull origin main
 
-if [ -d "/Applications/MonkeyChat.app" ]; then
-    rm -rf "/Applications/MonkeyChat.app"
-fi
+INFO_PLIST_PATH="cpp/messagingServer/ChatClientQt/build/Qt_6_9_2_for_macOS-Debug/ChatClientQt.app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleName MonkeyChat" "$INFO_PLIST_PATH"
+
 mv "cpp/messagingServer/ChatClientQt/build/Qt_6_9_2_for_macOS-Debug/ChatClientQt.app" /Applications/MonkeyChat.app
 
 cd ..
