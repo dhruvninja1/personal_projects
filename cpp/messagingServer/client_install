@@ -23,6 +23,9 @@ else
         echo "Please install Git manually."
     fi
 fi
+while ! command -v git &> /dev/null
+do
+done
 
 if [ -d "/Applications/MonkeyChat.app" ]; then
     echo "Removing previous version"
