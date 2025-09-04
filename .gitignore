@@ -5,5 +5,5 @@ wordle_data.json
 discordbotgag/.env
 .DS_Store
 .vscode
-cpp/messagingServer/logs/*
+cpp/messagingServer/logs/
 cpp/messagingServer/ChatClientQt/build/*
