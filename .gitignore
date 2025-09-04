@@ -6,3 +6,4 @@ discordbotgag/.env
 .DS_Store
 .vscode
 cpp/messagingServer/logs/*
+cpp/messagingServer/ChatClientQt/build/*
