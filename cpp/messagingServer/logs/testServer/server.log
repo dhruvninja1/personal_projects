@@ -1571,3 +1571,91 @@
 [Wed Sep  3 18:56:56 2025] User 'rohit' disconnected from room 'test'
 [Wed Sep  3 18:57:10 2025] Client 5 connection error or EOF
 [Wed Sep  3 18:57:10 2025] User '[ADMIN] dhruv' disconnected from room 'test'
+[Thu Sep  4 08:57:51 2025] Server started on port 8080
+[Thu Sep  4 08:57:51 2025] Server name: testServer
+[Thu Sep  4 08:57:51 2025] Logging system initialized - logs directory: logs/testServer
+[Thu Sep  4 08:57:51 2025] Loaded persistent room: test
+[Thu Sep  4 08:57:51 2025] Rooms list loaded from logs/testServer/rooms_list.txt
+[Thu Sep  4 08:57:51 2025] Default rooms initialized: general
+[Thu Sep  4 08:57:51 2025] Room logs directory: logs/testServer/rooms
+[Thu Sep  4 08:57:51 2025] Server startup complete - listening on port 8080
+[Thu Sep  4 08:57:51 2025] Server configuration - Port: 8080, Server name: testServer
+[Thu Sep  4 08:57:56 2025] New client connected from 127.0.0.1:52217
+[Thu Sep  4 08:57:56 2025] Client 5 added to event loop
+[Thu Sep  4 08:57:56 2025] Client 5 password authenticated
+[Thu Sep  4 08:57:56 2025] User 'dhruv' successfully authenticated
+[Thu Sep  4 08:57:57 2025] User 'dhruv' connected and auto-joined room 'general'
+[Thu Sep  4 08:57:57 2025] Room command executed: '/rooms' by 'dhruv'
+[Thu Sep  4 08:57:59 2025] Message sent to room 'general' by 'dhruv'
+[Thu Sep  4 08:59:12 2025] Room command executed: '/join test' by 'dhruv'
+[Thu Sep  4 08:59:12 2025] Join request for room: 'test' by 'dhruv'
+[Thu Sep  4 08:59:12 2025] User 'dhruv' left room 'general'
+[Thu Sep  4 08:59:13 2025] User 'dhruv' joined room 'test'
+[Thu Sep  4 08:59:15 2025] Room command executed: '/join general' by 'dhruv'
+[Thu Sep  4 08:59:15 2025] Join request for room: 'general' by 'dhruv'
+[Thu Sep  4 08:59:15 2025] User 'dhruv' left room 'test'
+[Thu Sep  4 08:59:15 2025] User 'dhruv' joined room 'general'
+[Thu Sep  4 08:59:15 2025] Room command executed: '/join test' by 'dhruv'
+[Thu Sep  4 08:59:15 2025] Join request for room: 'test' by 'dhruv'
+[Thu Sep  4 08:59:15 2025] User 'dhruv' left room 'general'
+[Thu Sep  4 08:59:16 2025] User 'dhruv' joined room 'test'
+[Thu Sep  4 08:59:19 2025] Room command executed: '/join general' by 'dhruv'
+[Thu Sep  4 08:59:19 2025] Join request for room: 'general' by 'dhruv'
+[Thu Sep  4 08:59:19 2025] User 'dhruv' left room 'test'
+[Thu Sep  4 08:59:19 2025] User 'dhruv' joined room 'general'
+[Thu Sep  4 08:59:25 2025] Client 5 connection error or EOF
+[Thu Sep  4 08:59:25 2025] User 'dhruv' disconnected from room 'general'
+[Thu Sep  4 09:57:44 2025] Server started on port 8080
+[Thu Sep  4 09:57:44 2025] Server name: testServer
+[Thu Sep  4 09:57:44 2025] Logging system initialized - logs directory: logs/testServer
+[Thu Sep  4 09:57:44 2025] Loaded persistent room: test
+[Thu Sep  4 09:57:44 2025] Rooms list loaded from logs/testServer/rooms_list.txt
+[Thu Sep  4 09:57:44 2025] Default rooms initialized: general
+[Thu Sep  4 09:57:44 2025] Room logs directory: logs/testServer/rooms
+[Thu Sep  4 09:57:44 2025] Server startup complete - listening on port 8080
+[Thu Sep  4 09:57:44 2025] Server configuration - Port: 8080, Server name: testServer
+[Thu Sep  4 09:57:51 2025] New client connected from 127.0.0.1:54087
+[Thu Sep  4 09:57:51 2025] Client 5 added to event loop
+[Thu Sep  4 09:57:51 2025] Client 5 password authenticated
+[Thu Sep  4 09:57:51 2025] User 'dhruv' successfully authenticated
+[Thu Sep  4 09:57:51 2025] User 'dhruv' connected and auto-joined room 'general'
+[Thu Sep  4 09:57:51 2025] Room command executed: '/rooms' by 'dhruv'
+[Thu Sep  4 09:57:55 2025] Message sent to room 'general' by 'dhruv'
+[Thu Sep  4 09:58:23 2025] Room command executed: '/join test' by 'dhruv'
+[Thu Sep  4 09:58:23 2025] Join request for room: 'test' by 'dhruv'
+[Thu Sep  4 09:58:23 2025] User 'dhruv' left room 'general'
+[Thu Sep  4 09:58:24 2025] User 'dhruv' joined room 'test'
+[Thu Sep  4 09:58:24 2025] Room command executed: '/join general' by 'dhruv'
+[Thu Sep  4 09:58:24 2025] Join request for room: 'general' by 'dhruv'
+[Thu Sep  4 09:58:24 2025] User 'dhruv' left room 'test'
+[Thu Sep  4 09:58:24 2025] User 'dhruv' joined room 'general'
+[Thu Sep  4 09:58:25 2025] Room command executed: '/join test' by 'dhruv'
+[Thu Sep  4 09:58:25 2025] Join request for room: 'test' by 'dhruv'
+[Thu Sep  4 09:58:25 2025] User 'dhruv' left room 'general'
+[Thu Sep  4 09:58:25 2025] User 'dhruv' joined room 'test'
+[Thu Sep  4 09:58:25 2025] Room command executed: '/join general' by 'dhruv'
+[Thu Sep  4 09:58:25 2025] Join request for room: 'general' by 'dhruv'
+[Thu Sep  4 09:58:25 2025] User 'dhruv' left room 'test'
+[Thu Sep  4 09:58:25 2025] User 'dhruv' joined room 'general'
+[Thu Sep  4 09:58:25 2025] Room command executed: '/join test' by 'dhruv'
+[Thu Sep  4 09:58:25 2025] Join request for room: 'test' by 'dhruv'
+[Thu Sep  4 09:58:25 2025] User 'dhruv' left room 'general'
+[Thu Sep  4 09:58:26 2025] User 'dhruv' joined room 'test'
+[Thu Sep  4 09:58:26 2025] Room command executed: '/join general' by 'dhruv'
+[Thu Sep  4 09:58:26 2025] Join request for room: 'general' by 'dhruv'
+[Thu Sep  4 09:58:26 2025] User 'dhruv' left room 'test'
+[Thu Sep  4 09:58:26 2025] User 'dhruv' joined room 'general'
+[Thu Sep  4 09:58:26 2025] Room command executed: '/join test' by 'dhruv'
+[Thu Sep  4 09:58:26 2025] Join request for room: 'test' by 'dhruv'
+[Thu Sep  4 09:58:26 2025] User 'dhruv' left room 'general'
+[Thu Sep  4 09:58:27 2025] User 'dhruv' joined room 'test'
+[Thu Sep  4 09:58:27 2025] Room command executed: '/join general' by 'dhruv'
+[Thu Sep  4 09:58:27 2025] Join request for room: 'general' by 'dhruv'
+[Thu Sep  4 09:58:27 2025] User 'dhruv' left room 'test'
+[Thu Sep  4 09:58:27 2025] User 'dhruv' joined room 'general'
+[Thu Sep  4 10:06:50 2025] Message sent to room 'general' by 'dhruv'
+[Thu Sep  4 10:06:53 2025] Message sent to room 'general' by 'dhruv'
+[Thu Sep  4 10:06:54 2025] Room command executed: '/join test' by 'dhruv'
+[Thu Sep  4 10:06:54 2025] Join request for room: 'test' by 'dhruv'
+[Thu Sep  4 10:06:54 2025] User 'dhruv' left room 'general'
+[Thu Sep  4 10:06:54 2025] User 'dhruv' joined room 'test'

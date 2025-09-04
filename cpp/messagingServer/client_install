@@ -23,9 +23,17 @@ else
         echo "Please install Git manually."
     fi
 fi
-while ! command -v git &> /dev/null
-do
+
+while true; do
+    if command -v git &> /dev/null && git --version &> /dev/null; then
+        echo "Git is ready!"
+        break
+    else
+        echo "Waiting for Git installation to finish..."
+        sleep 5
+    fi
 done
+
 
 if [ -d "/Applications/MonkeyChat.app" ]; then
     echo "Removing previous version"
