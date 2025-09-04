@@ -45,6 +45,3 @@ cd ..
 
 rm -rf "temporary_installer_folder"
 rm -rf ".git"
-
-
-xattr -cr /Applications/MonkeyChat.app
