@@ -1517,3 +1517,57 @@
 [Wed Sep  3 12:59:00 2025] Room logs directory: logs/testServer/rooms
 [Wed Sep  3 12:59:00 2025] Server startup complete - listening on port 8080
 [Wed Sep  3 12:59:00 2025] Server configuration - Port: 8080, Server name: testServer
+[Wed Sep  3 18:53:11 2025] Server started on port 8080
+[Wed Sep  3 18:53:11 2025] Server name: testServer
+[Wed Sep  3 18:53:11 2025] Logging system initialized - logs directory: logs/testServer
+[Wed Sep  3 18:53:11 2025] Loaded persistent room: test
+[Wed Sep  3 18:53:11 2025] Rooms list loaded from logs/testServer/rooms_list.txt
+[Wed Sep  3 18:53:11 2025] Default rooms initialized: general
+[Wed Sep  3 18:53:11 2025] Room logs directory: logs/testServer/rooms
+[Wed Sep  3 18:53:11 2025] Server startup complete - listening on port 8080
+[Wed Sep  3 18:53:11 2025] Server configuration - Port: 8080, Server name: testServer
+[Wed Sep  3 18:54:17 2025] New client connected from 127.0.0.1:54008
+[Wed Sep  3 18:54:17 2025] Client 5 added to event loop
+[Wed Sep  3 18:54:17 2025] Client 5 (ADMIN) password authenticated
+[Wed Sep  3 18:54:17 2025] User '[ADMIN] dhruv' successfully authenticated
+[Wed Sep  3 18:54:17 2025] User '[ADMIN] dhruv' connected and auto-joined room 'general'
+[Wed Sep  3 18:54:17 2025] Room command executed: '/rooms' by '[ADMIN] dhruv'
+[Wed Sep  3 18:55:10 2025] New client connected from 192.168.1.21:59852
+[Wed Sep  3 18:55:10 2025] Client 6 added to event loop
+[Wed Sep  3 18:55:30 2025] Client 6 connection error or EOF
+[Wed Sep  3 18:55:30 2025] New client connected from 192.168.1.21:59934
+[Wed Sep  3 18:55:30 2025] Client 6 added to event loop
+[Wed Sep  3 18:55:30 2025] Client 6 password authenticated
+[Wed Sep  3 18:55:30 2025] User 'rohit' successfully authenticated
+[Wed Sep  3 18:55:31 2025] User 'rohit' connected and auto-joined room 'general'
+[Wed Sep  3 18:55:31 2025] Room command executed: '/rooms' by 'rohit'
+[Wed Sep  3 18:55:35 2025] Message sent to room 'general' by '[ADMIN] dhruv'
+[Wed Sep  3 18:55:35 2025] Message sent to room 'general' by 'rohit'
+[Wed Sep  3 18:55:37 2025] Message sent to room 'general' by '[ADMIN] dhruv'
+[Wed Sep  3 18:55:39 2025] Room command executed: '/join test' by '[ADMIN] dhruv'
+[Wed Sep  3 18:55:39 2025] Join request for room: 'test' by '[ADMIN] dhruv'
+[Wed Sep  3 18:55:39 2025] User '[ADMIN] dhruv' left room 'general'
+[Wed Sep  3 18:55:39 2025] User '[ADMIN] dhruv' joined room 'test'
+[Wed Sep  3 18:55:41 2025] Message sent to room 'test' by '[ADMIN] dhruv'
+[Wed Sep  3 18:55:42 2025] Message sent to room 'general' by 'rohit'
+[Wed Sep  3 18:55:44 2025] Room command executed: '/join test' by 'rohit'
+[Wed Sep  3 18:55:44 2025] Join request for room: 'test' by 'rohit'
+[Wed Sep  3 18:55:44 2025] User 'rohit' left room 'general'
+[Wed Sep  3 18:55:44 2025] User 'rohit' joined room 'test'
+[Wed Sep  3 18:55:49 2025] Message sent to room 'test' by 'rohit'
+[Wed Sep  3 18:55:55 2025] Message sent to room 'test' by '[ADMIN] dhruv'
+[Wed Sep  3 18:55:59 2025] Message sent to room 'test' by 'rohit'
+[Wed Sep  3 18:56:04 2025] Message sent to room 'test' by 'rohit'
+[Wed Sep  3 18:56:07 2025] Message sent to room 'test' by '[ADMIN] dhruv'
+[Wed Sep  3 18:56:25 2025] Admin command executed: 'admin.mute rohit' by '[ADMIN] dhruv'
+[Wed Sep  3 18:56:25 2025] Admin '[ADMIN] dhruv' muted user 'rohit'
+[Wed Sep  3 18:56:34 2025] Admin command executed: 'admin.unmute rohit' by '[ADMIN] dhruv'
+[Wed Sep  3 18:56:34 2025] Admin '[ADMIN] dhruv' unmuted user 'rohit'
+[Wed Sep  3 18:56:36 2025] Message sent to room 'test' by 'rohit'
+[Wed Sep  3 18:56:43 2025] Message sent to room 'test' by 'rohit'
+[Wed Sep  3 18:56:49 2025] Message sent to room 'test' by '[ADMIN] dhruv'
+[Wed Sep  3 18:56:56 2025] Admin command executed: 'admin.kick rohit' by '[ADMIN] dhruv'
+[Wed Sep  3 18:56:56 2025] Admin '[ADMIN] dhruv' kicked user 'rohit'
+[Wed Sep  3 18:56:56 2025] User 'rohit' disconnected from room 'test'
+[Wed Sep  3 18:57:10 2025] Client 5 connection error or EOF
+[Wed Sep  3 18:57:10 2025] User '[ADMIN] dhruv' disconnected from room 'test'
