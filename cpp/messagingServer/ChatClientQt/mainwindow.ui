@@ -11,7 +11,10 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Chat Client</string>
+   <string>Chat Client - Image Support</string>
+  </property>
+  <property name="acceptDrops">
+   <bool>true</bool>
   </property>
   <widget class="QWidget" name="centralwidget">
    <widget class="QListWidget" name="roomsList">
@@ -22,6 +25,9 @@
       <width>181</width>
       <height>351</height>
      </rect>
+    </property>
+    <property name="toolTip">
+     <string>Available chat rooms - click to join</string>
     </property>
    </widget>
    <widget class="QPushButton" name="refreshButton">
@@ -36,8 +42,11 @@
     <property name="text">
      <string>Refresh</string>
     </property>
+    <property name="toolTip">
+     <string>Refresh the list of available rooms</string>
+    </property>
    </widget>
-   <widget class="QWidget" name="">
+   <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
       <x>190</x>
@@ -118,7 +127,10 @@
      <item>
       <widget class="QLabel" name="statusLabel">
        <property name="text">
-        <string>Not connected.</string>
+        <string>Not connected. Drag &amp; drop images supported!</string>
+       </property>
+       <property name="styleSheet">
+        <string>color: rgb(100, 100, 100);</string>
        </property>
       </widget>
      </item>
@@ -126,6 +138,12 @@
       <widget class="QTextEdit" name="chatText">
        <property name="readOnly">
         <bool>true</bool>
+       </property>
+       <property name="acceptDrops">
+        <bool>true</bool>
+       </property>
+       <property name="toolTip">
+        <string>Chat messages appear here. You can drag and drop images directly into this area.</string>
        </property>
       </widget>
      </item>
@@ -135,6 +153,22 @@
         <widget class="QLineEdit" name="inputEdit">
          <property name="placeholderText">
           <string>Type your message here...</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="imageButton">
+         <property name="maximumSize">
+          <size>
+           <width>40</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>📷</string>
+         </property>
+         <property name="toolTip">
+          <string>Send an image file (PNG, JPG, GIF, BMP, SVG)</string>
          </property>
         </widget>
        </item>

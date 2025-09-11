@@ -43,6 +43,7 @@ struct ChatRoom {
     void send_history_to_client(int client_fd);
 };
 
+// Function declarations
 void broadcast_message_to_room(const string& message, const string& room_name, int sender_fd = -1);
 bool set_non_blocking(int fd);
 void remove_client(int fd);
@@ -52,22 +53,26 @@ string process_mentions(const string& message);
 void log_server_event(const string& event);
 void save_rooms_list();
 void load_rooms_list();
+bool is_image_message(const string& message);
+void handle_image_message(const string& message, int sender_fd);
+string extract_image_filename(const string& message);
 
+// Global variables
 vector<int> client_sockets;
 string SERVER_PASSWORD;
 string ADMIN_PASSWORD;
-string ROOMS_LOGS_DIR; // Global variable for rooms logs directory
+string ROOMS_LOGS_DIR;
 map<string, ChatRoom> chat_rooms;
 map<int, bool> authenticated_clients;
 map<int, string> client_usernames;
 map<int, int> client_auth_stage;
 map<int, bool> admin_clients;
 map<int, bool> muted_clients;
-map<int, string> client_current_room; // Track which room each client is in
+map<int, string> client_current_room;
 
 // ChatRoom method implementations
 void ChatRoom::load_history() {
-    if (name.empty()) return; // Skip if default constructed
+    if (name.empty()) return;
     
     ifstream file(history_filename);
     if (file.is_open()) {
@@ -86,7 +91,7 @@ void ChatRoom::load_history() {
 }
 
 void ChatRoom::save_message(const string& message) {
-    // Save only normal chat (exclude system/admin messages)
+    // Save normal chat messages and image messages
     if (message.find("ROOM_") == 0 || 
         message.find("USERS_LIST:") == 0 || 
         message.find("ADMIN_") == 0 || 
@@ -99,15 +104,24 @@ void ChatRoom::save_message(const string& message) {
         message_history.pop_front();
     }
 
+    // For image messages, we might want to save them differently or limit storage
+    bool is_image = is_image_message(message);
+    
     ofstream file(history_filename, ios::app);
     if (file.is_open()) {
-        file << message << endl;
+        if (is_image) {
+            // Save image metadata instead of full data to save space
+            string filename = extract_image_filename(message);
+            string sender = message.substr(0, message.find(" - "));
+            file << sender << " - [IMAGE: " << filename << "]" << endl;
+        } else {
+            file << message << endl;
+        }
         file.close();
     }
 }
 
 void ChatRoom::send_history_to_client(int client_fd) {
-    // Send the last 50 messages to the newly connected client
     int start_index = max(0, (int)message_history.size() - 50);
     
     for (int i = start_index; i < (int)message_history.size(); i++) {
@@ -122,6 +136,53 @@ bool set_non_blocking(int fd) {
     if (flags == -1) return false;
     flags |= O_NONBLOCK;
     return fcntl(fd, F_SETFL, flags) != -1;
+}
+
+bool is_image_message(const string& message) {
+    return message.find("IMAGE_START|") != string::npos && 
+           message.find("|IMAGE_END") != string::npos;
+}
+
+string extract_image_filename(const string& message) {
+    size_t start = message.find("IMAGE_START|");
+    if (start == string::npos) return "unknown.jpg";
+    
+    start = message.find("|", start + 12); // Skip messageId
+    if (start == string::npos) return "unknown.jpg";
+    
+    start++; // Move past the |
+    size_t end = message.find("|", start);
+    if (end == string::npos) return "unknown.jpg";
+    
+    return message.substr(start, end - start);
+}
+
+void handle_image_message(const string& message, int sender_fd) {
+    if (!authenticated_clients.count(sender_fd) || !authenticated_clients[sender_fd]) {
+        return;
+    }
+    
+    if (!client_current_room.count(sender_fd) || client_current_room[sender_fd].empty()) {
+        string error_msg = "ROOM_ERROR:You must join a room first to send images.";
+        send(sender_fd, error_msg.c_str(), error_msg.length(), 0);
+        return;
+    }
+    
+    string current_room = client_current_room[sender_fd];
+    string filename = extract_image_filename(message);
+    
+    // Log image transmission
+    log_server_event("Image '" + filename + "' sent to room '" + current_room + 
+                    "' by '" + client_usernames[sender_fd] + "'");
+    
+    // Find the room and save message
+    auto room_it = chat_rooms.find(current_room);
+    if (room_it != chat_rooms.end()) {
+        room_it->second.save_message(message);
+        
+        // Broadcast to room (excluding sender)
+        broadcast_message_to_room(message, current_room, sender_fd);
+    }
 }
 
 string process_mentions(const string& message) {
@@ -167,9 +228,8 @@ string process_mentions(const string& message) {
 }
 
 void log_server_event(const string& event) {
-    string logs_dir = "logs"; // Default logs directory
+    string logs_dir = "logs";
     if (!ROOMS_LOGS_DIR.empty()) {
-        // Extract logs directory from ROOMS_LOGS_DIR (remove "/rooms" suffix)
         logs_dir = ROOMS_LOGS_DIR.substr(0, ROOMS_LOGS_DIR.find("/rooms"));
     }
     
@@ -178,7 +238,7 @@ void log_server_event(const string& event) {
     if (server_log.is_open()) {
         time_t now = time(0);
         char* dt = ctime(&now);
-        dt[strlen(dt)-1] = '\0'; // Remove newline
+        dt[strlen(dt)-1] = '\0';
         server_log << "[" << dt << "] " << event << endl;
         server_log.close();
     }
@@ -220,7 +280,14 @@ void broadcast_message_to_room(const string& message, const string& room_name, i
     auto room_it = chat_rooms.find(room_name);
     if (room_it == chat_rooms.end()) return;
 
-    string processed_message = process_mentions(message);
+    string processed_message;
+    
+    // Don't process mentions in image messages to avoid corrupting base64 data
+    if (is_image_message(message)) {
+        processed_message = message;
+    } else {
+        processed_message = process_mentions(message);
+    }
 
     ChatRoom& room = room_it->second;
     for (int client_fd : room.clients) {
@@ -237,17 +304,14 @@ void broadcast_message_to_room(const string& message, const string& room_name, i
 }
 
 void remove_client(int fd) {
-    // Remove from current room and broadcast leave message
     if (authenticated_clients.count(fd) && authenticated_clients[fd]) {
         if (client_usernames.count(fd) && client_current_room.count(fd) && !client_current_room[fd].empty()) {
             string current_room = client_current_room[fd];
             string leave_message = client_usernames[fd] + " has left the chat!";
             broadcast_message_to_room(leave_message, current_room, fd);
             
-            // Log user disconnection
             log_server_event("User '" + client_usernames[fd] + "' disconnected from room '" + current_room + "'");
             
-            // Remove from room
             if (chat_rooms.find(current_room) != chat_rooms.end()) {
                 chat_rooms[current_room].clients.erase(fd);
             }
@@ -282,53 +346,43 @@ int find_client_by_username(const string& username) {
 
 void handle_room_command(const string& message, int client_fd) {
     if (message.find("/join ") == 0) {
-        string room_name = message.substr(6); // Remove "/join "
+        string room_name = message.substr(6);
         
-        // Trim whitespace and ensure clean room name
         room_name.erase(0, room_name.find_first_not_of(" \t\r\n"));
         room_name.erase(room_name.find_last_not_of(" \t\r\n") + 1);
         
-        // Debug logging
         cout << "Attempting to join room: '" << room_name << "'" << endl;
         log_server_event("Join request for room: '" + room_name + "' by '" + client_usernames[client_fd] + "'");
         
-        // Check if room exists
         if (chat_rooms.find(room_name) == chat_rooms.end()) {
             string error_msg = "ROOM_ERROR:Room '" + room_name + "' does not exist. Use /rooms to see available rooms.";
             send(client_fd, error_msg.c_str(), error_msg.length(), 0);
             return;
         }
         
-        // Remove from current room (if they're in one)
         if (client_current_room.count(client_fd) && !client_current_room[client_fd].empty()) {
             string old_room = client_current_room[client_fd];
             if (chat_rooms.find(old_room) != chat_rooms.end()) {
                 chat_rooms[old_room].clients.erase(client_fd);
                 
-                // Broadcast leave message to old room
                 string leave_msg = client_usernames[client_fd] + " has left " + old_room;
                 broadcast_message_to_room(leave_msg, old_room, client_fd);
                 log_server_event("User '" + client_usernames[client_fd] + "' left room '" + old_room + "'");
             }
         }
         
-        // Add to new room
         auto room_it = chat_rooms.find(room_name);
         if (room_it != chat_rooms.end()) {
             room_it->second.clients.insert(client_fd);
             client_current_room[client_fd] = room_name;
 
-            // Notify the client
             string join_info = "ROOM_JOINED:" + room_name;
             send(client_fd, join_info.c_str(), join_info.length(), 0);
 
-            // Small delay to ensure ROOM_JOINED is processed first
             usleep(50000); // 50ms delay
 
-            // Send recent history
             room_it->second.send_history_to_client(client_fd);
 
-            // Broadcast join message to new room
             string join_msg = client_usernames[client_fd] + " has joined " + room_name;
             broadcast_message_to_room(join_msg, room_name, client_fd);
             
@@ -346,7 +400,6 @@ void handle_room_command(const string& message, int client_fd) {
         send(client_fd, rooms_list.c_str(), rooms_list.length(), 0);
     }
     else if (message == "/who") {
-        // Check if user is in a room first
         if (!client_current_room.count(client_fd) || client_current_room[client_fd].empty()) {
             string error_msg = "ROOM_ERROR:You must join a room first to see who's in it.";
             send(client_fd, error_msg.c_str(), error_msg.length(), 0);
@@ -373,29 +426,24 @@ void handle_admin_command(const string& message, int admin_fd) {
     string admin_username = client_usernames[admin_fd];
     
     if (message.find("admin.makeroom ") == 0) {
-        string room_name = message.substr(15); // Remove "admin.makeroom "
+        string room_name = message.substr(15);
         
-        // Check if room already exists
         if (chat_rooms.find(room_name) != chat_rooms.end()) {
             string error_msg = "ADMIN_ERROR:Room '" + room_name + "' already exists.";
             send(admin_fd, error_msg.c_str(), error_msg.length(), 0);
             return;
         }
         
-        // Create new room
         chat_rooms[room_name] = ChatRoom(room_name, ROOMS_LOGS_DIR);
         
-        // Save rooms list to make it persistent
         save_rooms_list();
         
-        // Notify admin
         string success_msg = "ADMIN_SUCCESS:Room '" + room_name + "' created successfully.";
         send(admin_fd, success_msg.c_str(), success_msg.length(), 0);
         
         cout << "Admin " << admin_username << " created room: " << room_name << endl;
         log_server_event("Admin '" + admin_username + "' created room '" + room_name + "'");
         
-        // Broadcast to all users that a new room is available
         string announcement = "ROOM_ANNOUNCEMENT:New room '" + room_name + "' has been created by " + admin_username;
         for (int client_fd : client_sockets) {
             if (client_fd != admin_fd) {
@@ -413,7 +461,6 @@ void handle_admin_command(const string& message, int admin_fd) {
             string mute_notification = "ADMIN_MUTE:You have been muted by an administrator.";
             send(target_fd, mute_notification.c_str(), mute_notification.length(), 0);
             
-            // Broadcast to admin's current room
             if (client_current_room.count(admin_fd) && !client_current_room[admin_fd].empty()) {
                 string current_room = client_current_room[admin_fd];
                 string mute_message = target_username + " has been muted by " + admin_username;
@@ -435,7 +482,6 @@ void handle_admin_command(const string& message, int admin_fd) {
             string kick_notification = "ADMIN_KICK:You have been kicked by an administrator.";
             send(target_fd, kick_notification.c_str(), kick_notification.length(), 0);
             
-            // Broadcast to target's current room
             if (client_current_room.count(target_fd) && !client_current_room[target_fd].empty()) {
                 string target_room = client_current_room[target_fd];
                 string kick_message = target_username + " has been kicked by " + admin_username;
@@ -460,7 +506,6 @@ void handle_admin_command(const string& message, int admin_fd) {
             string unmute_notification = "ADMIN_UNMUTE:You have been unmuted by an administrator.";
             send(target_fd, unmute_notification.c_str(), unmute_notification.length(), 0);
             
-            // Broadcast to admin's current room
             if (client_current_room.count(admin_fd) && !client_current_room[admin_fd].empty()) {
                 string current_room = client_current_room[admin_fd];
                 string unmute_message = target_username + " has been unmuted by " + admin_username;
@@ -475,23 +520,20 @@ void handle_admin_command(const string& message, int admin_fd) {
         }
     }
     else if (message.find("admin.removeroom ") == 0) {
-        string room_name = message.substr(17); // Remove "admin.removeroom "
+        string room_name = message.substr(17);
         
-        // Check if room exists
         if (chat_rooms.find(room_name) == chat_rooms.end()) {
             string error_msg = "ADMIN_ERROR:Room '" + room_name + "' does not exist.";
             send(admin_fd, error_msg.c_str(), error_msg.length(), 0);
             return;
         }
         
-        // Check if trying to remove the general room
         if (room_name == "general") {
             string error_msg = "ADMIN_ERROR:Cannot remove the general room.";
             send(admin_fd, error_msg.c_str(), error_msg.length(), 0);
             return;
         }
         
-        // Kick all users from the room first
         set<int> users_to_kick;
         for (int client_fd : chat_rooms[room_name].clients) {
             users_to_kick.insert(client_fd);
@@ -499,18 +541,15 @@ void handle_admin_command(const string& message, int admin_fd) {
         
         for (int client_fd : users_to_kick) {
             if (client_current_room.count(client_fd) && client_current_room[client_fd] == room_name) {
-                client_current_room[client_fd] = ""; // Remove from room
+                client_current_room[client_fd] = "";
                 
-                // Send notification to user
                 string kick_msg = "ROOM_DELETED:Room '" + room_name + "' has been deleted by an administrator.";
                 send(client_fd, kick_msg.c_str(), kick_msg.length(), 0);
             }
         }
         
-        // Remove the room from chat_rooms
         chat_rooms.erase(room_name);
         
-        // Delete the history file
         string history_file = ROOMS_LOGS_DIR + "/" + room_name + "_history.txt";
         if (remove(history_file.c_str()) == 0) {
             log_server_event("History file deleted: " + history_file);
@@ -518,17 +557,14 @@ void handle_admin_command(const string& message, int admin_fd) {
             log_server_event("Warning: Could not delete history file: " + history_file);
         }
         
-        // Save updated rooms list to make removal persistent
         save_rooms_list();
         
-        // Notify admin
         string success_msg = "ADMIN_SUCCESS:Room '" + room_name + "' deleted successfully.";
         send(admin_fd, success_msg.c_str(), success_msg.length(), 0);
         
         cout << "Admin " << admin_username << " deleted room: " << room_name << endl;
         log_server_event("Admin '" + admin_username + "' deleted room '" + room_name + "'");
         
-        // Broadcast to all users that a room has been removed
         string announcement = "ROOM_ANNOUNCEMENT:Room '" + room_name + "' has been deleted by " + admin_username;
         for (int client_fd : client_sockets) {
             if (client_fd != admin_fd) {
@@ -547,46 +583,42 @@ int main(int argc, char* argv[]) {
     SERVER_PASSWORD = argv[2];
     ADMIN_PASSWORD = argv[3];
     
-    // Get server name from user
     string server_name;
     cout << "Enter server name: ";
     getline(cin, server_name);
     
-    // Create logs directory structure
     string logs_dir = "logs/" + server_name;
     string rooms_dir = logs_dir + "/rooms";
     
-    // Set global variable for rooms logs directory
     ROOMS_LOGS_DIR = rooms_dir;
     
-    // Create directories if they don't exist
     system(("mkdir -p " + logs_dir).c_str());
     system(("mkdir -p " + rooms_dir).c_str());
     
     cout << "Logs will be stored in: " << logs_dir << endl;
     
-    // Create server log file
     string server_log_file = logs_dir + "/server.log";
     ofstream server_log(server_log_file, ios::app);
     if (server_log.is_open()) {
         time_t now = time(0);
         char* dt = ctime(&now);
-        dt[strlen(dt)-1] = '\0'; // Remove newline
+        dt[strlen(dt)-1] = '\0';
         server_log << "[" << dt << "] Server started on port " << PORT << endl;
         server_log << "[" << dt << "] Server name: " << server_name << endl;
+        server_log << "[" << dt << "] Image support enabled" << endl;
         server_log.close();
     }
     
     log_server_event("Logging system initialized - logs directory: " + logs_dir);
+    log_server_event("Image message handling enabled");
 
-    // Create default rooms
     chat_rooms["general"] = ChatRoom("general", rooms_dir);
     
-    // Load persistent rooms from previous sessions
     load_rooms_list();
     
-    cout << "Multi-room chat server starting..." << endl;
+    cout << "Multi-room chat server with image support starting..." << endl;
     cout << "Default rooms created: general" << endl;
+    cout << "Image support: Enabled (max recommended size: 500KB)" << endl;
     
     log_server_event("Default rooms initialized: general");
     log_server_event("Room logs directory: " + rooms_dir);
@@ -648,7 +680,7 @@ int main(int argc, char* argv[]) {
     cout << "Server name: " << server_name << endl;
     cout << "Regular password: " << SERVER_PASSWORD << endl;
     cout << "Admin password: " << ADMIN_PASSWORD << endl;
-    cout << "Plain text communication (no encryption)" << endl;
+    cout << "Plain text communication with image support" << endl;
     
     log_server_event("Server startup complete - listening on port " + to_string(PORT));
     log_server_event("Server configuration - Port: " + to_string(PORT) + ", Server name: " + server_name);
@@ -685,7 +717,7 @@ int main(int argc, char* argv[]) {
                 client_auth_stage[client_socket] = 0;
                 admin_clients[client_socket] = false;
                 muted_clients[client_socket] = false;
-                client_current_room[client_socket] = ""; // Initialize as empty string
+                client_current_room[client_socket] = "";
                 
                 log_server_event("New client connected from " + string(inet_ntoa(client_addr.sin_addr)) + ":" + to_string(ntohs(client_addr.sin_port)));
                 log_server_event("Client " + to_string(client_socket) + " added to event loop");
@@ -695,18 +727,20 @@ int main(int argc, char* argv[]) {
                     log_server_event("ERROR: Failed to add client " + to_string(client_socket) + " to event loop");
                 }
             } else {
-                char buffer[1024];
+                char buffer[8192]; // Increased buffer size for image data
                 ssize_t bytes_read = recv(event_fd, buffer, sizeof(buffer), 0);
                 
                 if (bytes_read > 0) {
                     string received_message(buffer, bytes_read);
                     
-                    // Debug: log all received messages
-                    cout << "Received from client " << event_fd << ": '" << received_message << "'" << endl;
+                    cout << "Received from client " << event_fd << ": message length = " << received_message.length() << endl;
+                    
+                    // Log first 100 chars for debugging (avoid logging full image data)
+                    string debug_msg = received_message.length() > 100 ? 
+                                      received_message.substr(0, 100) + "..." : received_message;
+                    cout << "Message preview: '" << debug_msg << "'" << endl;
 
                     if (authenticated_clients.at(event_fd)) {
-                        // No decryption needed - message is already plain text
-                        
                         // Check for room commands
                         if (received_message.find("/join ") == 0 || 
                             received_message == "/rooms" || 
@@ -716,16 +750,22 @@ int main(int argc, char* argv[]) {
                         }
                         // Check if this is an admin command
                         else if (admin_clients[event_fd] && (received_message.find("admin.") == 0)) {
-                            log_server_event("Admin command executed: '" + received_message + "' by '" + client_usernames[event_fd] + "'");
+                            log_server_event("Admin command executed by '" + client_usernames[event_fd] + "'");
                             handle_admin_command(received_message, event_fd);
-                        } else {
+                        }
+                        // Check if this is an image message
+                        else if (is_image_message(received_message)) {
+                            cout << "Processing image message from " << client_usernames[event_fd] << endl;
+                            handle_image_message(received_message, event_fd);
+                        }
+                        else {
                             // Check if user is muted
                             if (muted_clients[event_fd]) {
                                 string mute_reminder = "MUTED:You are muted and cannot send messages.";
                                 send(event_fd, mute_reminder.c_str(), mute_reminder.length(), 0);
                             } else {
                                 // Check if user is in a room
-                                cout << "User " << client_usernames[event_fd] << " sending message. Checking room status..." << endl;
+                                cout << "User " << client_usernames[event_fd] << " sending regular message. Checking room status..." << endl;
                                 
                                 if (client_current_room.count(event_fd) && !client_current_room[event_fd].empty()) {
                                     string current_room = client_current_room[event_fd];

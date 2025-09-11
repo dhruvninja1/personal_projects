@@ -8,13 +8,31 @@
 #include <QMap>
 #include <QListWidgetItem>
 #include <QByteArray>
+#include <QFileDialog>
+#include <QImageReader>
+#include <QBuffer>
+#include <QMimeData>
+#include <QUrl>
+#include <QPixmap>
+#include <QLabel>
+#include <QScrollArea>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QProgressBar>
+#include <QTimer>
+#include <QCryptographicHash>
+#include <QStandardPaths>
+#include <QDir>
+#include <QDateTime>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , socket(new QTcpSocket(this))
+    , progressTimer(new QTimer(this))
 {
     ui->setupUi(this);
+    
     connect(socket, &QTcpSocket::readyRead, this, &MainWindow::onSocketReadyRead);
     connect(socket, &QTcpSocket::connected, this, &MainWindow::onSocketConnected);
     connect(socket, &QTcpSocket::disconnected, this, &MainWindow::onSocketDisconnected);
@@ -22,9 +40,15 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->inputEdit, &QLineEdit::returnPressed, this, &MainWindow::on_sendButton_clicked);
     connect(ui->roomsList, &QListWidget::itemClicked, this, &MainWindow::on_roomsList_itemClicked);
     connect(ui->refreshButton, &QPushButton::clicked, this, &MainWindow::on_refreshButton_clicked);
+    connect(ui->imageButton, &QPushButton::clicked, this, &MainWindow::on_imageButton_clicked);
+    
+    connect(progressTimer, &QTimer::timeout, this, &MainWindow::onImageTransferProgress);
 
     ui->chatText->setReadOnly(true);
-    ui->statusLabel->setText("Not connected.");
+    ui->statusLabel->setText("Not connected. Drag & drop images supported!");
+    
+    // Enable drag and drop
+    setAcceptDrops(true);
 }
 
 MainWindow::~MainWindow()
@@ -32,6 +56,221 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+void MainWindow::on_imageButton_clicked()
+{
+    if (!socket->isValid() || currentRoom.isEmpty()) {
+        appendMessage("<span style='color:red;'>You must be connected and in a room to send images.</span>");
+        return;
+    }
+
+    QString fileName = QFileDialog::getOpenFileName(this,
+        tr("Select Image"), "",
+        tr("Image Files (*.png *.jpg *.jpeg *.gif *.bmp *.svg)"));
+    
+    if (!fileName.isEmpty()) {
+        sendImage(fileName);
+    }
+}
+
+void MainWindow::dragEnterEvent(QDragEnterEvent *event)
+{
+    if (event->mimeData()->hasUrls()) {
+        bool hasImages = false;
+        foreach (const QUrl &url, event->mimeData()->urls()) {
+            if (url.isLocalFile() && isImageFile(url.toLocalFile())) {
+                hasImages = true;
+                break;
+            }
+        }
+        if (hasImages) {
+            event->acceptProposedAction();
+        }
+    }
+}
+
+void MainWindow::dropEvent(QDropEvent *event)
+{
+    if (!socket->isValid() || currentRoom.isEmpty()) {
+        appendMessage("<span style='color:red;'>You must be connected and in a room to send images.</span>");
+        return;
+    }
+
+    foreach (const QUrl &url, event->mimeData()->urls()) {
+        if (url.isLocalFile()) {
+            QString filePath = url.toLocalFile();
+            if (isImageFile(filePath)) {
+                sendImage(filePath);
+            }
+        }
+    }
+    event->acceptProposedAction();
+}
+
+bool MainWindow::isImageFile(const QString &filePath)
+{
+    QStringList supportedFormats;
+    supportedFormats << "png" << "jpg" << "jpeg" << "gif" << "bmp" << "svg";
+    
+    QFileInfo fileInfo(filePath);
+    QString suffix = fileInfo.suffix().toLower();
+    return supportedFormats.contains(suffix);
+}
+
+QString MainWindow::generateMessageId()
+{
+    // Use QDateTime and qrand for Qt 5.15 compatibility
+    static bool seeded = false;
+    if (!seeded) {
+        qsrand(QDateTime::currentMSecsSinceEpoch());
+        seeded = true;
+    }
+    return QString::number(QDateTime::currentMSecsSinceEpoch()) + "_" + 
+           QString::number(qrand() % 10000);
+}
+
+QByteArray MainWindow::compressImage(const QByteArray &imageData, const QString &format, int quality)
+{
+    QPixmap pixmap;
+    pixmap.loadFromData(imageData);
+    
+    // Resize if too large (max 800x600)
+    if (pixmap.width() > 800 || pixmap.height() > 600) {
+        pixmap = pixmap.scaled(800, 600, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    }
+    
+    QByteArray compressedData;
+    QBuffer buffer(&compressedData);
+    buffer.open(QIODevice::WriteOnly);
+    pixmap.save(&buffer, format.toUtf8().constData(), quality);
+    
+    return compressedData;
+}
+
+void MainWindow::sendImage(const QString &filePath)
+{
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        appendMessage("<span style='color:red;'>Failed to open image file.</span>");
+        return;
+    }
+
+    QByteArray imageData = file.readAll();
+    file.close();
+    
+    // Compress image if it's too large (>500KB)
+    if (imageData.size() > 500000) {
+        QFileInfo fileInfo(filePath);
+        QString format = fileInfo.suffix().toUpper();
+        if (format == "JPG") format = "JPEG";
+        
+        imageData = compressImage(imageData, format, 75);
+        appendMessage("<span style='color:orange;'>Image compressed for transmission.</span>");
+    }
+
+    QFileInfo fileInfo(filePath);
+    QString filename = fileInfo.fileName();
+    QString messageId = generateMessageId();
+    
+    // Create image message protocol:
+    // IMAGE_START|messageId|filename|dataSize|base64Data|IMAGE_END
+    QString base64Data = imageData.toBase64();
+    QString imageMessage = QString("IMAGE_START|%1|%2|%3|%4|IMAGE_END")
+                          .arg(messageId)
+                          .arg(filename)
+                          .arg(imageData.size())
+                          .arg(base64Data);
+
+    socket->write((ui->usernameEdit->text() + " - " + imageMessage).toUtf8());
+    
+    // Show preview locally
+    appendMessage(QString("<span style='color:green;'>Sending image: %1 (%2 KB)</span>")
+                 .arg(filename)
+                 .arg(imageData.size() / 1024));
+}
+
+void MainWindow::handleImageData(const QString &message)
+{
+    // Parse image message: IMAGE_START|messageId|filename|dataSize|base64Data|IMAGE_END
+    QStringList parts = message.split("|");
+    if (parts.size() < 6 || parts[0] != "IMAGE_START" || parts[5] != "IMAGE_END") {
+        return; // Invalid image message
+    }
+    
+    QString messageId = parts[1];
+    QString filename = parts[2];
+    qint64 dataSize = parts[3].toLongLong();
+    QString base64Data = parts[4];
+    
+    // Decode base64 data
+    QByteArray imageData = QByteArray::fromBase64(base64Data.toUtf8());
+    
+    if (imageData.size() != dataSize) {
+        appendMessage("<span style='color:red;'>Image data corruption detected.</span>");
+        return;
+    }
+    
+    // Extract sender from the full message (before the " - IMAGE_START")
+    int dashPos = message.indexOf(" - IMAGE_START");
+    QString sender = (dashPos != -1) ? message.left(dashPos) : "Unknown";
+    
+    displayImage(sender, imageData, filename);
+}
+
+void MainWindow::displayImage(const QString &sender, const QByteArray &imageData, const QString &filename)
+{
+    // Create pixmap from image data
+    QPixmap pixmap;
+    pixmap.loadFromData(imageData);
+    
+    if (pixmap.isNull()) {
+        appendMessage("<span style='color:red;'>Failed to display image: " + filename + "</span>");
+        return;
+    }
+    
+    // Scale image for display (max 300x200)
+    if (pixmap.width() > 300 || pixmap.height() > 200) {
+        pixmap = pixmap.scaled(300, 200, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    }
+    
+    // Convert pixmap to HTML img tag using base64
+    QByteArray ba;
+    QBuffer buffer(&ba);
+    buffer.open(QIODevice::WriteOnly);
+    pixmap.save(&buffer, "PNG");
+    QString base64 = ba.toBase64();
+    
+    QString senderColor = sender.contains("[ADMIN]") ? "rgb(218,165,32)" : "rgb(0,255,255)";
+    bool bold = sender.contains("[ADMIN]");
+    
+    QString imageHtml = QString(
+        "<div style='margin: 5px 0;'>"
+        "<span style='color:%1;%2'>%3</span> shared an image:<br/>"
+        "<img src='data:image/png;base64,%4' style='max-width:300px; max-height:200px; border:1px solid #ccc; border-radius:5px; margin:5px 0;'/><br/>"
+        "<span style='color:gray; font-size:small;'>%5 (%6 KB)</span>"
+        "</div>")
+        .arg(senderColor)
+        .arg(bold ? "font-weight:bold;" : "")
+        .arg(sender.toHtmlEscaped())
+        .arg(base64)
+        .arg(filename)
+        .arg(imageData.size() / 1024);
+    
+    appendMessage(imageHtml);
+}
+
+void MainWindow::onImageTransferProgress()
+{
+    // Update progress bars for pending images
+    for (auto it = pendingImages.begin(); it != pendingImages.end(); ++it) {
+        PendingImage& pending = it.value();
+        if (pending.progressBar) {
+            int progress = (pending.receivedSize * 100) / pending.totalSize;
+            pending.progressBar->setValue(progress);
+        }
+    }
+}
+
+// Rest of the original MainWindow methods...
 void MainWindow::on_connectButton_clicked()
 {
     socket->abort();
@@ -44,7 +283,6 @@ void MainWindow::on_connectButton_clicked()
 void MainWindow::onSocketConnected()
 {
     ui->statusLabel->setText("Connected. Sending credentials...");
-    // Send password directly
     socket->write(ui->passwordEdit->text().toUtf8());
 }
 
@@ -62,8 +300,6 @@ void MainWindow::on_sendButton_clicked()
 
     QString sendMsg;
     if (msg.startsWith("/join")) {
-        // Don't allow manual /join commands from input field
-        // Users should click on rooms in the list instead
         appendMessage("<span style='color:orange;'>Please use the room list to join rooms instead of typing /join commands.</span>");
         ui->inputEdit->clear();
         return;
@@ -79,11 +315,9 @@ void MainWindow::on_sendButton_clicked()
         sendMsg = username + " - " + msg;
     }
 
-    // Send message as plain text
     socket->write(sendMsg.toUtf8());
     ui->inputEdit->clear();
 
-    // Show locally (except system/admin commands)
     if (!(sendMsg.startsWith("/") || sendMsg.startsWith("admin."))) {
         displayFormattedMessage(sendMsg, false);
     }
@@ -95,7 +329,6 @@ void MainWindow::onSocketReadyRead()
         QByteArray data = socket->readAll();
         messageBuffer += QString::fromUtf8(data);
 
-        // Process messages that might be concatenated
         QStringList prefixes = {"ADMIN_AUTH_SUCCESS", "AUTH_SUCCESS", "FAIL", "OK",
                                 "ROOM_JOINED:", "ROOMS_LIST:", "USERS_LIST:", "ROOM_ERROR:",
                                 "ROOM_ANNOUNCEMENT:", "ROOM_DELETED:", "HISTORY:",
@@ -111,7 +344,6 @@ void MainWindow::onSocketReadyRead()
             int earliestPos = remaining.length();
             QString earliestPrefix;
 
-            // Find the earliest occurring prefix
             for (const QString& prefix : prefixes) {
                 int pos = remaining.indexOf(prefix);
                 if (pos != -1 && pos < earliestPos) {
@@ -122,24 +354,19 @@ void MainWindow::onSocketReadyRead()
             }
 
             if (foundPrefix && earliestPos == 0) {
-                // Found a prefix at the start, now find where this message ends
                 int nextPrefixPos = remaining.length();
-
                 for (const QString& nextPrefix : prefixes) {
                     int pos = remaining.indexOf(nextPrefix, earliestPrefix.length());
                     if (pos != -1 && pos < nextPrefixPos) {
                         nextPrefixPos = pos;
                     }
                 }
-
                 currentMessage = remaining.left(nextPrefixPos);
                 remaining = remaining.mid(nextPrefixPos);
             } else if (foundPrefix) {
-                // There's text before the prefix - treat it as a regular message
                 currentMessage = remaining.left(earliestPos);
                 remaining = remaining.mid(earliestPos);
             } else {
-                // No prefix found, treat entire remaining as one message
                 currentMessage = remaining;
                 remaining.clear();
             }
@@ -153,7 +380,6 @@ void MainWindow::onSocketReadyRead()
 
 void MainWindow::processMessage(const QString& msg)
 {
-    // === AUTH STAGE ===
     if (msg == "ADMIN_AUTH_SUCCESS") {
         isAdmin = true;
         socket->write(ui->usernameEdit->text().toUtf8());
@@ -167,45 +393,34 @@ void MainWindow::processMessage(const QString& msg)
         if (isAdmin) {
             appendMessage("<span style='color:rgb(218,165,32);'>You are logged in as an ADMIN!</span>");
         }
-        // Request rooms list after successful authentication
         socket->write("/rooms");
         socket->flush();
     }
-    // === SYSTEM MESSAGES ===
     else if (msg.startsWith("ROOM_JOINED:")) {
         currentRoom = msg.mid(12);
-        joiningRoom = false; // Reset the flag
+        joiningRoom = false;
         ui->chatText->clear();
         appendMessage(QString("<span style='color:rgb(0,150,0);'>Joined room: %1</span>").arg(currentRoom));
         appendMessage(QString("<span style='color:rgb(0,255,255);'>=== %1 Channel ===</span>").arg(currentRoom));
-        appendMessage("Type a message and press Enter.");
+        appendMessage("Type a message and press Enter or drag & drop images.");
         appendMessage("Room commands: /join &lt;roomname&gt;, /rooms, /who");
         if (isAdmin) {
             appendMessage("Admin commands: admin.mute &lt;user&gt;, admin.kick &lt;user&gt;, admin.unmute &lt;user&gt;");
             appendMessage("Room management: admin.makeroom &lt;room&gt;, admin.removeroom &lt;room&gt;");
         }
-        // Don't clear the rooms list here - keep it populated
     }
     else if (msg.startsWith("ROOMS_LIST:")) {
         QString payload = msg.mid(11).trimmed();
-
-        // Remove the "Available rooms: " prefix if present
         if (payload.startsWith("Available rooms: ")) {
             payload = payload.mid(17);
         }
-
-        // Clear and repopulate the list
         ui->roomsList->clear();
-
         if (!payload.isEmpty()) {
             QStringList parts = payload.split(", ", Qt::SkipEmptyParts);
             for (const QString& part : parts) {
                 QString trimmed = part.trimmed();
-
-                // Extract room name (text before the first parenthesis)
                 int parenPos = trimmed.indexOf('(');
                 QString roomName = (parenPos > 0) ? trimmed.left(parenPos).trimmed() : trimmed;
-
                 if (!roomName.isEmpty()) {
                     auto *item = new QListWidgetItem(trimmed, ui->roomsList);
                     item->setData(Qt::UserRole, roomName);
@@ -213,7 +428,6 @@ void MainWindow::processMessage(const QString& msg)
                 }
             }
         }
-
         ui->roomsList->setEnabled(true);
     }
     else if (msg.startsWith("USERS_LIST:")) {
@@ -238,9 +452,14 @@ void MainWindow::processMessage(const QString& msg)
             }
         }
     }
-    // === CHAT MESSAGES ===
     else if (msg.startsWith("HISTORY:")) {
-        displayFormattedMessage(msg.mid(8), true);
+        QString historyMsg = msg.mid(8);
+        // Check if this is an image message
+        if (historyMsg.contains("IMAGE_START|")) {
+            handleImageData(historyMsg);
+        } else {
+            displayFormattedMessage(historyMsg, true);
+        }
     }
     else if (msg.startsWith("ADMIN_SUCCESS:")) {
         appendMessage(QString("<span style='color:rgb(0,150,0);'>%1</span>").arg(msg.mid(14).toHtmlEscaped()));
@@ -265,7 +484,12 @@ void MainWindow::processMessage(const QString& msg)
         appendMessage(QString("<span style='color:lightgray;'>%1</span>").arg(msg.toHtmlEscaped()));
     }
     else {
-        displayFormattedMessage(msg, false);
+        // Check if this is an image message
+        if (msg.contains("IMAGE_START|")) {
+            handleImageData(msg);
+        } else {
+            displayFormattedMessage(msg, false);
+        }
     }
 }
 
@@ -328,16 +552,12 @@ void MainWindow::on_roomsList_itemClicked(QListWidgetItem* item)
     QString roomName = item->data(Qt::UserRole).toString().trimmed();
     if (roomName.isEmpty() || roomName == currentRoom || joiningRoom) return;
 
-    // Set flag to prevent duplicate commands
     joiningRoom = true;
-
-    // Clear the input field to prevent interference
     ui->inputEdit->clear();
 
-    // Send /join command as plain text
     QString joinCommand = "/join " + roomName;
     socket->write(joinCommand.toUtf8());
-    socket->flush(); // Ensure the data is sent immediately
+    socket->flush();
 
     appendMessage("<span style='color:green;'>Joining room: " + roomName + "...</span>");
 }
@@ -349,7 +569,6 @@ void MainWindow::on_refreshButton_clicked()
         return;
     }
 
-    // Only send refresh if we're not currently joining a room
     if (!joiningRoom) {
         QString refreshCommand = "/rooms";
         socket->write(refreshCommand.toUtf8());

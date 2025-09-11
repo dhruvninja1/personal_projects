@@ -30,7 +30,7 @@ public:
     QWidget *centralwidget;
     QListWidget *roomsList;
     QPushButton *refreshButton;
-    QWidget *widget;
+    QWidget *layoutWidget;
     QVBoxLayout *verticalLayout;
     QGroupBox *groupBox;
     QHBoxLayout *horizontalLayout;
@@ -47,6 +47,7 @@ public:
     QTextEdit *chatText;
     QHBoxLayout *horizontalLayout_2;
     QLineEdit *inputEdit;
+    QPushButton *imageButton;
     QPushButton *sendButton;
 
     void setupUi(QMainWindow *MainWindow)
@@ -54,6 +55,7 @@ public:
         if (MainWindow->objectName().isEmpty())
             MainWindow->setObjectName(QString::fromUtf8("MainWindow"));
         MainWindow->resize(1062, 346);
+        MainWindow->setAcceptDrops(true);
         centralwidget = new QWidget(MainWindow);
         centralwidget->setObjectName(QString::fromUtf8("centralwidget"));
         roomsList = new QListWidget(centralwidget);
@@ -62,13 +64,13 @@ public:
         refreshButton = new QPushButton(centralwidget);
         refreshButton->setObjectName(QString::fromUtf8("refreshButton"));
         refreshButton->setGeometry(QRect(40, 310, 100, 32));
-        widget = new QWidget(centralwidget);
-        widget->setObjectName(QString::fromUtf8("widget"));
-        widget->setGeometry(QRect(190, 0, 871, 345));
-        verticalLayout = new QVBoxLayout(widget);
+        layoutWidget = new QWidget(centralwidget);
+        layoutWidget->setObjectName(QString::fromUtf8("layoutWidget"));
+        layoutWidget->setGeometry(QRect(190, 0, 871, 345));
+        verticalLayout = new QVBoxLayout(layoutWidget);
         verticalLayout->setObjectName(QString::fromUtf8("verticalLayout"));
         verticalLayout->setContentsMargins(0, 0, 0, 0);
-        groupBox = new QGroupBox(widget);
+        groupBox = new QGroupBox(layoutWidget);
         groupBox->setObjectName(QString::fromUtf8("groupBox"));
         horizontalLayout = new QHBoxLayout(groupBox);
         horizontalLayout->setObjectName(QString::fromUtf8("horizontalLayout"));
@@ -121,25 +123,32 @@ public:
 
         verticalLayout->addWidget(groupBox);
 
-        statusLabel = new QLabel(widget);
+        statusLabel = new QLabel(layoutWidget);
         statusLabel->setObjectName(QString::fromUtf8("statusLabel"));
 
         verticalLayout->addWidget(statusLabel);
 
-        chatText = new QTextEdit(widget);
+        chatText = new QTextEdit(layoutWidget);
         chatText->setObjectName(QString::fromUtf8("chatText"));
         chatText->setReadOnly(true);
+        chatText->setAcceptDrops(true);
 
         verticalLayout->addWidget(chatText);
 
         horizontalLayout_2 = new QHBoxLayout();
         horizontalLayout_2->setObjectName(QString::fromUtf8("horizontalLayout_2"));
-        inputEdit = new QLineEdit(widget);
+        inputEdit = new QLineEdit(layoutWidget);
         inputEdit->setObjectName(QString::fromUtf8("inputEdit"));
 
         horizontalLayout_2->addWidget(inputEdit);
 
-        sendButton = new QPushButton(widget);
+        imageButton = new QPushButton(layoutWidget);
+        imageButton->setObjectName(QString::fromUtf8("imageButton"));
+        imageButton->setMaximumSize(QSize(40, 16777215));
+
+        horizontalLayout_2->addWidget(imageButton);
+
+        sendButton = new QPushButton(layoutWidget);
         sendButton->setObjectName(QString::fromUtf8("sendButton"));
 
         horizontalLayout_2->addWidget(sendButton);
@@ -156,8 +165,14 @@ public:
 
     void retranslateUi(QMainWindow *MainWindow)
     {
-        MainWindow->setWindowTitle(QCoreApplication::translate("MainWindow", "Chat Client", nullptr));
+        MainWindow->setWindowTitle(QCoreApplication::translate("MainWindow", "Chat Client - Image Support", nullptr));
+#if QT_CONFIG(tooltip)
+        roomsList->setToolTip(QCoreApplication::translate("MainWindow", "Available chat rooms - click to join", nullptr));
+#endif // QT_CONFIG(tooltip)
         refreshButton->setText(QCoreApplication::translate("MainWindow", "Refresh", nullptr));
+#if QT_CONFIG(tooltip)
+        refreshButton->setToolTip(QCoreApplication::translate("MainWindow", "Refresh the list of available rooms", nullptr));
+#endif // QT_CONFIG(tooltip)
         groupBox->setTitle(QCoreApplication::translate("MainWindow", "Connect", nullptr));
         labelHost->setText(QCoreApplication::translate("MainWindow", "Host:", nullptr));
         hostEdit->setText(QCoreApplication::translate("MainWindow", "localhost", nullptr));
@@ -166,8 +181,16 @@ public:
         labelUsername->setText(QCoreApplication::translate("MainWindow", "Username:", nullptr));
         labelPassword->setText(QCoreApplication::translate("MainWindow", "Password:", nullptr));
         connectButton->setText(QCoreApplication::translate("MainWindow", "Connect", nullptr));
-        statusLabel->setText(QCoreApplication::translate("MainWindow", "Not connected.", nullptr));
+        statusLabel->setText(QCoreApplication::translate("MainWindow", "Not connected. Drag & drop images supported!", nullptr));
+        statusLabel->setStyleSheet(QCoreApplication::translate("MainWindow", "color: rgb(100, 100, 100);", nullptr));
+#if QT_CONFIG(tooltip)
+        chatText->setToolTip(QCoreApplication::translate("MainWindow", "Chat messages appear here. You can drag and drop images directly into this area.", nullptr));
+#endif // QT_CONFIG(tooltip)
         inputEdit->setPlaceholderText(QCoreApplication::translate("MainWindow", "Type your message here...", nullptr));
+        imageButton->setText(QCoreApplication::translate("MainWindow", "\360\237\223\267", nullptr));
+#if QT_CONFIG(tooltip)
+        imageButton->setToolTip(QCoreApplication::translate("MainWindow", "Send an image file (PNG, JPG, GIF, BMP, SVG)", nullptr));
+#endif // QT_CONFIG(tooltip)
         sendButton->setText(QCoreApplication::translate("MainWindow", "Send", nullptr));
     } // retranslateUi
 
