@@ -30,7 +30,7 @@ void kernel_main() {
     }
 
     // Setup keyboard
-    putchar('D');s
+    putchar('D');
     setup_keyboard();
 
 
