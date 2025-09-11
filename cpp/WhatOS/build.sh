@@ -1,70 +1,113 @@
 #!/bin/bash
 
-# Define output file names
+# === File names ===
 BOOT_ASM="boot.asm"
 KERNEL_C="kernel.c"
+KEYBOARD_C="keyboard.c"
+KERNEL_ENTRY="kernel_entry.asm"
+INTERRUPTS_ASM="interrupts.asm"
+LINKER_SCRIPT="linker.ld"
 BOOT_BIN="boot.bin"
 KERNEL_BIN="kernel.bin"
+KERNEL_ENTRY_OBJ="kernel_entry.o"
+INTERRUPTS_OBJ="interrupts.o"
+KERNEL_C_OBJ="kernel.o"
+KEYBOARD_C_OBJ="keyboard.o"
 OS_IMG="os.img"
 
-# Define the cross-compiler name
-CROSS_COMPILER="i386-elf-gcc"
+# Clean previous builds
+rm -f $BOOT_BIN $KERNEL_BIN $KERNEL_ENTRY_OBJ $INTERRUPTS_OBJ $KERNEL_C_OBJ $KEYBOARD_C_OBJ $OS_IMG
 
-# Check for the required cross-compiler
-if ! command -v $CROSS_COMPILER &> /dev/null
-then
-    # If not found, try common Homebrew locations on macOS
-    if [[ -d "/opt/homebrew/bin" ]]; then
-        export PATH="/opt/homebrew/bin:$PATH"
-    fi
-    if [[ -d "/usr/local/bin" ]]; then
-        export PATH="/usr/local/bin:$PATH"
-    fi
-
-    if ! command -v $CROSS_COMPILER &> /dev/null
-    then
-        echo "Error: $CROSS_COMPILER could not be found."
-        echo "Please ensure the cross-compiler is installed and in your PATH."
-        exit 1
-    fi
+# === Compiler detection ===
+if command -v i386-elf-gcc &> /dev/null; then
+    COMPILER="i386-elf-gcc"
+    OBJCOPY="i386-elf-objcopy"
+    echo "Using cross-compiler: $COMPILER"
+elif command -v i386-linux-gnu-gcc &> /dev/null; then
+    COMPILER="i386-linux-gnu-gcc"
+    OBJCOPY="i386-linux-gnu-objcopy"
+    echo "Using cross-compiler: $COMPILER"
+elif command -v gcc &> /dev/null; then
+    COMPILER="gcc"
+    OBJCOPY="objcopy"
+    echo "Using system GCC with -m32 (multilib required): $COMPILER"
+else
+    echo "Error: No suitable compiler found (need i386-elf-gcc or gcc)."
+    exit 1
 fi
 
-# Compile the C kernel to a 32-bit flat binary using the cross-compiler
-# -m32: Compile for 32-bit architecture
-# -ffreestanding: Do not link the standard C library
-# -fno-pie: Disable Position Independent Executables
-# -nostdlib: Do not link standard libraries
-# -Ttext=0x10000: Set the entry point of the binary to 0x10000
-# -Wl,--build-id=none: A fix for some versions of GCC to not embed build IDs
-echo "Compiling C kernel..."
-$CROSS_COMPILER -m32 -ffreestanding -fno-pie -nostdlib -o $KERNEL_BIN -Ttext=0x10000 -Wl,--build-id=none $KERNEL_C
-
-# Check if GCC compilation was successful
+# === Assemble kernel entry point ===
+echo "Assembling kernel entry point..."
+nasm -f elf32 $KERNEL_ENTRY -o $KERNEL_ENTRY_OBJ
 if [ $? -ne 0 ]; then
-  echo "GCC compilation failed!"
+  echo "Kernel entry assembly failed!"
   exit 1
 fi
 
-# Assemble the bootloader
+# === Assemble interrupt handlers ===
+echo "Assembling interrupt handlers..."
+nasm -f elf32 $INTERRUPTS_ASM -o $INTERRUPTS_OBJ
+if [ $? -ne 0 ]; then
+  echo "Interrupt handlers assembly failed!"
+  exit 1
+fi
+
+# === Compile the C kernel ===
+echo "Compiling C kernel..."
+$COMPILER -m32 -ffreestanding -fno-pie -nostdlib -c $KERNEL_C -o $KERNEL_C_OBJ \
+    -Wall -Wextra -fno-stack-protector -fno-builtin
+if [ $? -ne 0 ]; then
+  echo "Kernel compilation failed!"
+  exit 1
+fi
+
+# === Compile keyboard handler ===
+echo "Compiling keyboard handler..."
+$COMPILER -m32 -ffreestanding -fno-pie -nostdlib -c $KEYBOARD_C -o $KEYBOARD_C_OBJ \
+    -Wall -Wextra -fno-stack-protector -fno-builtin
+if [ $? -ne 0 ]; then
+  echo "Keyboard compilation failed!"
+  exit 1
+fi
+
+# === Link kernel ===
+echo "Linking kernel..."
+$COMPILER -m32 -ffreestanding -nostdlib -T $LINKER_SCRIPT -o $KERNEL_BIN \
+    $KERNEL_ENTRY_OBJ $INTERRUPTS_OBJ $KERNEL_C_OBJ $KEYBOARD_C_OBJ -lgcc
+if [ $? -ne 0 ]; then
+  echo "Kernel linking failed!"
+  exit 1
+fi
+
+# Convert to binary format
+$OBJCOPY -O binary $KERNEL_BIN $KERNEL_BIN.tmp
+mv $KERNEL_BIN.tmp $KERNEL_BIN
+
+# === Assemble the bootloader ===
 echo "Assembling bootloader..."
 nasm -f bin $BOOT_ASM -o $BOOT_BIN
-
-# Check if NASM assembly was successful
 if [ $? -ne 0 ]; then
-  echo "NASM assembly failed!"
+  echo "Bootloader assembly failed!"
   exit 1
 fi
 
-# Concatenate the bootloader and kernel into a single disk image
+# === Build the disk image ===
 echo "Creating disk image..."
+# Create a 1.44MB floppy image filled with zeros
+dd if=/dev/zero of=$OS_IMG bs=512 count=2880
+
+# Write bootloader to first sector
 dd if=$BOOT_BIN of=$OS_IMG bs=512 count=1 conv=notrunc
+
+# Write kernel starting at second sector
 dd if=$KERNEL_BIN of=$OS_IMG bs=512 seek=1 conv=notrunc
 
-# Pad the disk image to a minimum of 1.44MB for a virtual floppy
-# This is required by QEMU for floppy emulation.
-echo "Padding disk image to 1.44MB..."
-dd if=/dev/zero of=$OS_IMG bs=512 seek=2880 count=0 conv=notrunc
+echo "Build complete!"
+echo "Files created:"
+echo "  - $OS_IMG (disk image)"
+echo "  - $BOOT_BIN (bootloader)"
+echo "  - $KERNEL_BIN (kernel binary)"
 
-# Run the disk image with QEMU
+# === Run with QEMU ===
 echo "Running QEMU..."
 qemu-system-x86_64 -fda $OS_IMG -boot a
