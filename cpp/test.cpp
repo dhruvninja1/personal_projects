@@ -1,9 +1,13 @@
 #include <iostream>
+#include <string>
+#include <vector>
 using namespace std;
 
-
-
-
 int main(){
-    float a = 1.0/6; cout << a;
+    string names[] = {"Arboob", "Aditiya", "Maxim"};
+    cout << names[1];
 }
+
+
+
+

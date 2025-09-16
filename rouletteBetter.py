@@ -69,9 +69,6 @@ submit_button = tk.Button(root, text="Submit", height=3, width=3, command=lambda
 
 
 
-
-
-
 def hide_bet_entry():
     global total_money
     betEntry.place_forget()
