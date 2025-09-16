@@ -56,7 +56,6 @@ void clear_screen(void);
 void handle_enter();
 
 
-
 // memory functions
 void *memset(void *dest, int val, size_t len){
     unsigned char *ptr = (unsigned char*)dest;
