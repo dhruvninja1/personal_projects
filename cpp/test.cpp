@@ -5,5 +5,5 @@ using namespace std;
 
 
 int main(){
-    cout << "hi";
+    float a = 1.0/6; cout << a;
 }
