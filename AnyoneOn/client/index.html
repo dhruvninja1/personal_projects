@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
+        <script src="main.js" defer></script>
+        <link rel="stylesheet" href="style.css">
+    </head>
+
+    <body>
+        <div>
+            <div class="yourCard">
+                <h1 class="name">temp</h1>
+                <h1 id="yourStatus">Offline</h1>
+                <sl-dropdown>
+                    <sl-button slot="trigger" caret>Set Status</sl-button>
+                    <sl-menu id="your-status-menu">
+                        <sl-menu-item value="Online">Online</sl-menu-item>
+                        <sl-menu-item value="Away">Away</sl-menu-item>
+                        <sl-menu-item value="Offline">Offline</sl-menu-item>
+                    </sl-menu>
+                </sl-dropdown>
+            </div>
+            <div>
+                <div class="otherCard">
+                    <h1 class="name">placeholder</h1>
+                    <h1 class="status">Offline</h1>
+                </div>  
+            </div>
+        </div>
+    </body>
+</html>
