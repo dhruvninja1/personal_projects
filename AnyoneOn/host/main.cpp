@@ -37,12 +37,28 @@ int main(int argc, char* argv[]){
     auto arr = vector<crow::json::wvalue>();
     read_file(file, arr);
     crow::SimpleApp app;
-    CROW_ROUTE(app, "/status").methods(crow::HTTPMethod::POST)
-    ([&arr, &file](const crow::request& req){
+    CROW_ROUTE(app, "/status").methods(crow::HTTPMethod::OPTIONS)
+    ([](){
         crow::response res;
-        res.set_header("Access-Control-Allow-Origin", "*"); // allow all origins
+        res.set_header("Access-Control-Allow-Origin", "*");
         res.set_header("Access-Control-Allow-Methods", "POST, OPTIONS");
         res.set_header("Access-Control-Allow-Headers", "Content-Type");
+        res.code = 204;
+        return res;
+    });
+
+    CROW_ROUTE(app, "/statuses").methods(crow::HTTPMethod::OPTIONS)
+    ([](){
+        crow::response res;
+        res.set_header("Access-Control-Allow-Origin", "*");
+        res.set_header("Access-Control-Allow-Methods", "GET, OPTIONS");
+        res.set_header("Access-Control-Allow-Headers", "Content-Type");
+        res.code = 204;
+        return res;
+    });
+
+    CROW_ROUTE(app, "/status").methods(crow::HTTPMethod::POST)
+    ([&arr, &file](const crow::request& req){
         lock_guard<mutex> lock(mtx);
         ofstream out(file);
         auto r = crow::json::load(req.body);
@@ -65,7 +81,16 @@ int main(int argc, char* argv[]){
         }
         crow::json::wvalue result = arr;
         out << result.dump();
-        return crow::response();
+        
+        crow::response res;
+        res.set_header("Access-Control-Allow-Origin", "*");
+        res.set_header("Access-Control-Allow-Methods", "POST, OPTIONS");
+        res.set_header("Access-Control-Allow-Headers", "Content-Type");
+        res.set_header("Content-Type", "application/json");
+        res.code = 200;
+        res.body = "{\"success\": true}";
+    
+    return res;
     });
 
     CROW_ROUTE(app, "/statuses")

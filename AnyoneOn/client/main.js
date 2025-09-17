@@ -43,7 +43,7 @@ menu.addEventListener("sl-select", event => {
     yourStatus.textContent = item.value;
     console.log("Cliecked");
     updateStatusColors();
-    updateStatus(username, yourStatus);
+    updateStatus(username, yourStatus.textContent);
 
 });
 
