@@ -24,6 +24,7 @@ void read_file(string file, vector<crow::json::wvalue>& arr);
 string strip_quotes(const string& s);
 
 int main(int argc, char* argv[]){
+    cout << "hu";
     int PORT;
     if (argc != 2){
         cout << "Enter port only";
@@ -37,14 +38,14 @@ int main(int argc, char* argv[]){
     auto arr = vector<crow::json::wvalue>();
     read_file(file, arr);
     crow::SimpleApp app;
+
     CROW_ROUTE(app, "/status").methods(crow::HTTPMethod::OPTIONS)
-    ([](){
-        crow::response res;
+    ([](const crow::request&, crow::response& res){
         res.set_header("Access-Control-Allow-Origin", "*");
         res.set_header("Access-Control-Allow-Methods", "POST, OPTIONS");
         res.set_header("Access-Control-Allow-Headers", "Content-Type");
         res.code = 204;
-        return res;
+        res.end();
     });
 
     CROW_ROUTE(app, "/statuses").methods(crow::HTTPMethod::OPTIONS)
@@ -97,10 +98,15 @@ int main(int argc, char* argv[]){
     ([&arr, &file]() {
         crow::response res;
         res.set_header("Access-Control-Allow-Origin", "*");
+        res.set_header("Access-Control-Allow-Methods", "GET, OPTIONS");
+        res.set_header("Access-Control-Allow-Headers", "Content-Type");
+        res.set_header("Content-Type", "application/json");
         lock_guard<mutex> lock(mtx);
         read_file(file, arr);
         crow::json::wvalue result = arr;
-        return crow::response(result.dump());
+        res.body = result.dump();
+        res.code = 200;
+        return res;
     });
 
 
