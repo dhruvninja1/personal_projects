@@ -1,3 +1,4 @@
+username=""
 yourStatus = document.getElementById("yourStatus");
 yourUsernameLabel = document.getElementById("yourUsernameLabel")
 userNameInputButton = document.getElementById("userNameInputButton");
@@ -25,7 +26,44 @@ async function updateStatus(name, status){
   }
 }
 
-function updateStatusColors(){
+async function getStatuses(){
+    const response = await fetch(`${serverUrl}/statuses`, {
+      method: "GET"
+    })
+
+    if (response.ok) {
+          const data = await response.json();
+          console.log("Data received:", data);
+          updateScreenStatuses(data);
+    }
+}
+
+async function updateScreenStatuses(data){
+    otherStatuses = document.getElementById("otherStatuses")
+    const children = otherStatuses.children;
+    arr = data;
+    console.log("data");
+
+    otherStatuses.innerHTML = '';
+
+    arr.forEach(user =>{
+        if (user.name == username){
+            yourStatus.textContent = user.status;
+            return;
+        }
+        tempDiv = document.createElement('div');
+        tempDiv.id = user.name;
+        tempDiv.classList.add('otherCard');
+        tempDiv.innerHTML = `
+          <h1 class="othername">${user.name}</h1>
+          <h1 class="status">${user.status}</h1>
+        `;
+        otherStatuses.appendChild(tempDiv);
+    })
+    updateStatusColors()
+}
+
+async function updateStatusColors(){
     document.querySelectorAll(".status").forEach(el => {
         if (el.textContent.includes("Online")) el.style.color = "green";
         if (el.textContent.includes("Offline"))   el.style.color = "gray";
@@ -54,6 +92,8 @@ userNameInputButton.addEventListener('click', function(){
     overlay.style.display='none';
     yourUsernameLabel.textContent=username;
     console.log(username);
+    getStatuses();
+    setInterval(getStatuses, 1000);
 });
 
 

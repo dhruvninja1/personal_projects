@@ -3,18 +3,29 @@
     color: black;
     display:flex;
     gap:1rem;
-    align-items: center;
+    align-items: baseline;
 }
 
 .otherCard{
-    margin:1rem;
+    margin:.5rem;
     display:flex;
     gap:1rem;
-    align-items: center;
+    align-items: baseline;
 }
 
 .name{
-    color:deepskyblue
+    color:deepskyblue;
+    font-size: 3rem;
+    margin: 2px
+}
+.othername{
+    color:deepskyblue;
+    font-size: 2rem;
+    margin: 2px
+}
+
+.status{
+    font-size: 1.5rem;
 }
 
 sl-menu-item::part(base) {
