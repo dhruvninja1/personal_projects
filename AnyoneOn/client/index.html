@@ -7,9 +7,17 @@
     </head>
 
     <body>
+        <div class="overlay" id="overlay"></div>
+        <div id="popup" class="popup">
+            <div class="popup-content">
+                <p>Enter username </p>
+                <input type="text" name="Username" id="usernameInputField">
+                <button class="close-button" id="userNameInputButton">&rarr;</button>
+            </div>
+        </div>
         <div>
             <div class="yourCard">
-                <h1 class="name">temp</h1>
+                <h1 class="name" id="yourUsernameLabel">temp</h1>
                 <h1 id="yourStatus">Offline</h1>
                 <sl-dropdown>
                     <sl-button slot="trigger" caret>Set Status</sl-button>
