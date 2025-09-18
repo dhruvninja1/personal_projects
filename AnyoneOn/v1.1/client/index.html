@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
+        <script src="main.js" defer></script>
+        <link rel="stylesheet" href="style.css">
+    </head>
+
+    <body>
+        <div class="overlay" id="overlay"></div>
+        <div id="popup" class="popup">
+            <div class="popup-content">
+                <p>Enter username </p>
+                <input type="text" name="Username" id="usernameInputField">
+                <button class="close-button" id="userNameInputButton">&rarr;</button>
+            </div>
+        </div>
+        <div>
+            <div class="yourCard">
+                <h1 class="name" id="yourUsernameLabel">temp</h1>
+                <h1 id="yourStatus" class="status">Offline</h1>
+                <sl-dropdown>
+                    <sl-button slot="trigger" caret>Set Status</sl-button>
+                    <div class="statusSelectorDropdown">
+                        <sl-menu id="till_menu">
+                            <sl-input id="tillHourInput" type="number" min="0" max="23" placeholder="hr"></sl-input>
+                            <sl-input id="tillMinuteInput" type="number" min="0" max="59" placeholder="min"></sl-input>
+                        </sl-menu>
+                        <sl-menu id="your-status-menu">
+                            <sl-menu-item value="Online">Online</sl-menu-item>
+                            <sl-menu-item value="Away">Away</sl-menu-item>
+                            <sl-menu-item value="Offline">Offline</sl-menu-item>
+                        </sl-menu>
+                    </div>
+                </sl-dropdown>
+            </div>
+            <div id="otherStatuses">
+                <div class="otherCard" id="TEMP">
+                    <h1 class="othername">placeholder</h1>
+                    <h1 class="status">Offline</h1>
+                </div>  
+            </div>
+        </div>
+    </body>
+</html>
