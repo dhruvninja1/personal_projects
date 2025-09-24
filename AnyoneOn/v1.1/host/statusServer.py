@@ -4,9 +4,13 @@ from flask import jsonify
 from flask_cors import CORS
 import json
 import sys
+import threading
+from datetime import datetime
 
-argv = sys.argv
-PORT = argv[1]
+
+PORT = sys.argv[1]
+    
+
 filename = f"data/{PORT}.json"
 
 
@@ -14,14 +18,18 @@ app = Flask(__name__)
 CORS(app)
 
 data = []
-
-with open(filename, 'r') as file:
-    data = json.load(file)
+try:
+    with open(filename, 'r') as file:
+        data = json.load(file)
+except:
+    with open(filename, "w") as json_file:
+        json.dump(data, json_file)
 
 
 @app.route("/status", methods=['POST'])
 def get_status():
     global data
+    global filename
     with open(filename, 'r') as file:
         data = json.load(file)
     received_data = request.get_json()
@@ -65,10 +73,41 @@ def get_status():
 
 @app.route("/statuses", methods=['GET'])
 def send_statuses():
+    global filename
     global data
     with open(filename, 'r') as file:
         data = json.load(file)
     return jsonify(data), 200
 
+
+
+
+
+def processTill():
+    global data
+    global filename
+    print("hi")
+    
+    currentHr = datetime.now().hour
+    currentMin = datetime.now().minute
+    for item in data:
+        if item["till_hr"] == currentHr and item["till_min"] == currentMin:
+            if item["status"] == "Online":
+                item["status"] = "Offline"
+            elif item["status"] == "Offline":
+                item["status"] = "Online"
+            elif item["status"] == "Away":
+                item["status"] = "Online"
+            item["till_hr"] = ''
+            item["till_min"] = ''
+    with open(filename, "w") as json_file:
+        json.dump(data, json_file)
+    print(data)
+    threading.Timer(60, processTill).start()
+    
+
+
+
 if __name__ == "__main__":
-    app.run(debug=True, port=PORT)
+    threading.Timer(1, processTill).start()
+    app.run(debug=True, port=PORT, use_reloader=False)

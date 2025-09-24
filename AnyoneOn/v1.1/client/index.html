@@ -15,12 +15,26 @@
                 <button class="close-button" id="userNameInputButton">&rarr;</button>
             </div>
         </div>
+        <div class="popup" id="addPopup" style="display: none;">
+            <div class="popup-content">
+                <input type="text" id="serverNameInputField" placeholder="name">
+                <input type="number" id="portInputField" placeholder="port">
+                <button class="close-button" id="portInputButton">&rarr;</button>
+            </div>
+        </div>
+        <div class="popup" id="createPopup" style="display: none;">
+            <div class="popup-content">
+                <input type="text" id="createServerNameInputField" placeholder="name">
+                <button class="close-button" id="createServerNameInputButton">&rarr;</button>
+            </div>
+        </div>
         <div>
             <div class="yourCard">
                 <h1 class="name" id="yourUsernameLabel">temp</h1>
                 <h1 id="yourStatus" class="status">Offline</h1>
-                <sl-dropdown>
-                    <sl-button slot="trigger" caret>Set Status</sl-button>
+                <h1 id="yourTill" class="till">till: IDK</h1>
+                <sl-dropdown  placement="right-start" distance="10">
+                    <sl-button slot="trigger" class="dropdownButton" caret>Set Status</sl-button>
                     <div class="statusSelectorDropdown">
                         <sl-menu id="till_menu">
                             <sl-input id="tillHourInput" type="number" min="0" max="23" placeholder="hr"></sl-input>
@@ -35,10 +49,11 @@
                 </sl-dropdown>
             </div>
             <div id="otherStatuses">
-                <div class="otherCard" id="TEMP">
-                    <h1 class="othername">placeholder</h1>
-                    <h1 class="status">Offline</h1>
-                </div>  
+                
+            </div>
+            <div class="buttons">
+                <button id="addButton">Add</button>
+                <button id="createButton"> Create</button>
             </div>
         </div>
     </body>
