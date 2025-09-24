@@ -36,7 +36,7 @@ def createServer():
                 json.dump(open_servers, file)
         thread = threading.Thread(target=start_server, args=(test_port,))
         thread.start()
-        return(test_port), 
+        return str(test_port), 200
 
 @app.route("/joinServer/<int:port>", methods=['GET'])
 def join_server(port):

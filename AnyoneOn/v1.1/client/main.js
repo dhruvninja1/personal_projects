@@ -35,7 +35,10 @@ async function addSever(dport, dname){
 
 async function createServer(name){
   const response = await fetch(`${managementUrl}/createServer`, {method: "GET"});
-  addSever(parseInt(response.text), name);
+  d = await response.text();
+  console.log(parseInt(d))
+  addSever(parseInt(d), name);
+  createServerPopup.style.display = 'none';
 }
 
 async function updateStatus(name, status, till_hr, till_min){
@@ -187,7 +190,7 @@ createServerBtn.addEventListener('click', function(){
 });
 
 createServerSubmitButton.addEventListener('click', function(){
-  createServer(createServerInputName.textContent);
+  createServer(createServerInputName.value);
 });
 
 menu.addEventListener("sl-select", event => {
