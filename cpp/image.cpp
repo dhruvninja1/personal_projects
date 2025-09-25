@@ -4,7 +4,9 @@
 #include <fstream>
 #include <stdexcept>
 #include <cstdlib>
+#include <sstream> 
 using namespace std;
+
 
 struct Pixel{
     int red;
@@ -61,6 +63,7 @@ const Pixel TITANIUM = Pixel(192, 192, 192);
 const Pixel PLATINUM = Pixel(192, 192, 192);
 
 
+
 class Image{
     public:
         Image() : m_width(0), m_height(0) {}
@@ -74,7 +77,7 @@ class Image{
 
         void view(){
             save("image.ppm");
-            system("magick convert image.ppm image.png");
+            system("magick convert image.ppm image.png > /dev/null 2>&1");
             system("chafa image.png");
             return;
         }
@@ -118,53 +121,6 @@ class Image{
             }
         }
 
-        // Fixed triangle method - uses barycentric coordinates
-        void fillTriangle(unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2, 
-                         unsigned int x3, unsigned int y3, const Pixel& pixel) {
-            // Find bounding box manually (no C++11 required)
-            int minX = (int)x1;
-            if ((int)x2 < minX) minX = (int)x2;
-            if ((int)x3 < minX) minX = (int)x3;
-            
-            int maxX = (int)x1;
-            if ((int)x2 > maxX) maxX = (int)x2;
-            if ((int)x3 > maxX) maxX = (int)x3;
-            
-            int minY = (int)y1;
-            if ((int)y2 < minY) minY = (int)y2;
-            if ((int)y3 < minY) minY = (int)y3;
-            
-            int maxY = (int)y1;
-            if ((int)y2 > maxY) maxY = (int)y2;
-            if ((int)y3 > maxY) maxY = (int)y3;
-            
-            // Clamp to image bounds
-            if (minX < 0) minX = 0;
-            if (maxX >= (int)m_width) maxX = (int)m_width - 1;
-            if (minY < 0) minY = 0;
-            if (maxY >= (int)m_height) maxY = (int)m_height - 1;
-            
-            // Check each pixel in bounding box
-            for (int y = minY; y <= maxY; y++) {
-                for (int x = minX; x <= maxX; x++) {
-                    if (pointInTriangle(x, y, x1, y1, x2, y2, x3, y3)) {
-                        m_pixels[y][x] = pixel;
-                    }
-                }
-            }
-        }
-
-        bool pointInTriangle(int px, int py, int x1, int y1, int x2, int y2, int x3, int y3) {
-            int denom = (y2 - y3) * (x1 - x3) + (x3 - x2) * (y1 - y3);
-            if (denom == 0) return false;
-            
-            int a = ((y2 - y3) * (px - x3) + (x3 - x2) * (py - y3)) / denom;
-            int b = ((y3 - y1) * (px - x3) + (x1 - x3) * (py - y3)) / denom;
-            int c = 1 - a - b;
-            
-            return a >= 0 && b >= 0 && c >= 0;
-        }
-        
         
         void save(const string& filename) const {
             ofstream file(filename);
@@ -198,12 +154,30 @@ class Image{
         vector<vector<Pixel> > m_pixels;
 };
 
-
 int main(){
     Image image(100, 100);
-    image.fill(Pixel(255, 0, 0));
-    image.fillBox(20, 20, 60, 60, BLUE);
-    image.view();
+    string command;
+    int a;
+    int b;
+    int c;
+    int d;
+    Pixel color;
+    int count = 0;
+    
+    while (true){
+        cin >> command;
+        if (command == "view"){
+            cout << "d" << endl;
+            image.view();
+        }
+        if (command=="test"){
+            cout << "t" << endl;
+        }
+        command="";
+        cout << count << endl;
+        count++;
+    }
+
     
     return 0;
 }

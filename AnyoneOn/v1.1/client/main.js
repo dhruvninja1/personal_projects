@@ -15,8 +15,6 @@ const serverStatusContainers = new Map();
 
 
 
-
-
 async function addSever(dport, dname){
     const response = await fetch(`${managementUrl}/joinServer/${dport}`, {
       method: "GET"
