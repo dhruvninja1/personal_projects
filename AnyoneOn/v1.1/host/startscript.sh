@@ -1,7 +1,6 @@
 cd $HOME
 cd personal_projects
 source personal/bin/activate
-
 cd AnyoneOn/v$1/host
 
 gnome-terminal -- bash -c "python serverManagement.py; exec bash"

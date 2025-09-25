@@ -1,13 +1,9 @@
 #include <iostream>
-#include <string>
-#include <vector>
 using namespace std;
-
 int main(){
-    string names[] = {"Arboob", "Aditiya", "Maxim"};
-    cout << names[1];
+    int a;
+    while (true){
+        cin >> a;
+        cout << "D" << a << endl;
+    }
 }
-
-
-
-
