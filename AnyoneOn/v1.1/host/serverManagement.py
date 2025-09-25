@@ -56,4 +56,4 @@ def delete_server(port):
         else:
                 return("Server not found"), 200
 if __name__ == "__main__":
-    app.run(debug=True, port=15565, use_reloader=False)
+    app.run(host='0.0.0.0', port=15565, use_reloader=False)
