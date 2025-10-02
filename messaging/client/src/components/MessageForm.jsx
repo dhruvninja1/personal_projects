@@ -2,17 +2,19 @@ import { useSocket } from "./socket";
 import React, { useState } from 'react';
 import data from '@emoji-mart/data'
 import Picker from '@emoji-mart/react'
+import { useChannelState } from '../context/ChannelContext.jsx';
 
 function MessageForm(){
     const [msg, setMsg] = useState('');
     const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false); 
     const { socket, isConnected } = useSocket();
+    const { channelValue } = useChannelState();
     
     const handleSubmit = (event) => {
         event.preventDefault(); 
         console.log('Form submitted with name:', msg);
         setMsg('');
-        socket.emit('chat message', msg);
+        socket.emit('chat message', {'message': msg, 'channel': channelValue});
     };
     
     const handleSelect = (emoji) => {

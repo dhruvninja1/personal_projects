@@ -1,6 +1,5 @@
 const express = require('express');
 const http = require('http');
-const { userInfo } = require('os');
 const { Server } = require('socket.io');
 
 
@@ -16,9 +15,10 @@ const io = new Server(server, {cors: {
 });
 
 class messageObject {
-    constructor(sender, content, color, timestamp = new Date().toLocaleTimeString()){
+    constructor(sender, content, color, channel='all', timestamp = new Date().toLocaleTimeString()){
         this.sender = sender;
         this.content = content;
+        this.channel = channel;
         this.color = color
         this.timestamp = timestamp;
     }
@@ -28,20 +28,34 @@ class messageObject {
 admin_key = "55twin55"
 
 users={};
+channels=['general'];
 
 
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
-    socket.on('username message', (msg) =>{
+    socket.on('username message', (message) =>{
+        msg = message; 
         users[socket.id] = {'username': msg, 'admin' : false, 'muted' : false};
         console.log(socket.id + " : " + users[socket.id].username);
         const joinMessage = new messageObject("System",`${msg} has joined the chat`, "orange");
         io.emit('chat message', joinMessage);
         console.log(users[socket.id])
+        for (let c in channels){
+            const joinChannelMessage = new messageObject("System",`${channels[c]}`, "orange");
+            socket.emit('add channel message', joinChannelMessage);
+        }
+        
+        // Send updated user list after username is set
+        temp = [];
+        for (let u in users){
+            temp.push(users[u].username);
+        }
+        io.emit('user list', temp);
     });
 
-    socket.on('chat message', (msg) => {
+    socket.on('chat message', (message) => {
+        msg = message.message;
         console.log(users[socket.id]);
         if (msg == admin_key){
             users[socket.id].admin = true;
@@ -70,7 +84,7 @@ io.on('connection', (socket) => {
                 };
             }
             else if (!users[socket.id].muted){
-                const chatMessage = new messageObject(users[socket.id].username, msg, (users[socket.id].admin ? "red" : "blue"))
+                const chatMessage = new messageObject(users[socket.id].username, msg, (users[socket.id].admin ? "red" : "blue"), message.channel)
                 io.emit('chat message', chatMessage);
             }
             else{
@@ -84,9 +98,22 @@ io.on('connection', (socket) => {
         
     });
 
+
+    socket.on('add channel message', (msg) => {
+        console.log(msg);
+        addChannelMessage = new messageObject("System", msg, "orange", "all", new Date().toLocaleTimeString());
+        io.emit('add channel message', addChannelMessage);
+        channels.push(msg);
+    });
+
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
         delete users[socket.id];
+        temp = [];
+        for (let u in users){
+            temp.push(users[u].username);
+        }
+        io.emit('user list', temp);
 
   });
 });

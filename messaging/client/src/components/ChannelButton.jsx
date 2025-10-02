@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useChannelState } from '../context/ChannelContext.jsx';
 
-
 function ChannelButton({ name }) {
-    const { updateChannelValue, channelValue } = useChannelState();
-    const updateChannel = () => {
-        updateChannelValue(name);
-        console.log(channelValue);
+    const { updateChannelValue } = useChannelState();
+    const handleClick = () => {
+        // Remove # prefix when storing in context
+        const channelName = name.startsWith('#') ? name.slice(1) : name;
+        console.log('Selected channel:', channelName);
+        updateChannelValue(channelName);
     }
+    
     return(
         <div>
-            <button onClick={updateChannel}>{name}</button>
+            <button onClick={handleClick}>{name}</button>
         </div>
     )
 }

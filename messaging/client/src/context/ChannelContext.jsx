@@ -5,7 +5,7 @@ export const ChannelContext = createContext();
 export const useChannelState = () => useContext(ChannelContext);
 
 export const ChannelProvider = ({ children }) => {
-    const [channelValue, setChannelValue] = useState('Initial Channel Data');
+    const [channelValue, setChannelValue] = useState('general');
   
     const updateChannelValue = (newValue) => {
       setChannelValue(newValue);
