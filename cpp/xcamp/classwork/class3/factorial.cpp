@@ -28,5 +28,4 @@ uint64_t factorial_recursive(int a){
 int main(){
     int a; cin >> a;
     cout << factorial_loop(a) << endl;
-    cout << factorial_recursive(a);
 }

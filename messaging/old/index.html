@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>MonkeyChat</title>
+        <script src="https://cdn.jsdelivr.net/npm/emoji-mart@latest/dist/browser.js"></script>
+        <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script> 
+        <link rel="stylesheet" href="style.css"></link>
+    </head>
+
+    <body>
+        <div class="overlay" id="overlay"></div>
+        <div id="popup" class="popup">
+            <div class="popup-content">
+                <p>Enter username </p>
+                <input type="text" name="Username" id="usernameInputField">
+                <button class="close-button" id="userNameInputButton">&rarr;</button>
+            </div>
+        </div>
+        <ul id="messages" class="no-bullets"></ul>
+        <form id="form">
+            <div id="emoji-picker-container" style="display: none;"></div>
+            <input id="input" autocomplete="off">
+            <button>Send</button>
+            <button type="button" id="emoji-toggle-button">😀</button> 
+        </form>
+
+        <script type="module" src="./script.js"></script>
+    </body>
+</html>

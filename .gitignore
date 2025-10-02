@@ -7,3 +7,5 @@ discordbotgag/.env
 .vscode
 cpp/messagingServer/logs/
 cpp/messagingServer/ChatClientQt/build/*
+messaging/client/node_modules
+messaging/server/node_modules
