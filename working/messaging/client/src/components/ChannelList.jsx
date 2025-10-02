@@ -24,7 +24,7 @@ function ChannelList(){
         };
     }, [socket]);
     return(
-        <div>
+        <div className='p-2'>
             <div>
                 <AddChannelButton></AddChannelButton>
             </div>

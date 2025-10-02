@@ -1,11 +1,22 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { useAuth } from './AuthContext';
 
 export const UsernameContext = createContext();
 
 export const useUsernameState = () => useContext(UsernameContext);
 
 export const UsernameProvider = ({ children }) => {
-    const [usernameValue, setUsernameValue] = useState('Initial Username Data');
+    const [usernameValue, setUsernameValue] = useState('');
+    const { user } = useAuth();
+  
+    // Update username when user authentication state changes
+    useEffect(() => {
+      if (user) {
+        setUsernameValue(user.displayName || user.email || 'Anonymous');
+      } else {
+        setUsernameValue('');
+      }
+    }, [user]);
   
     const updateUsernameValue = (newValue) => {
       setUsernameValue(newValue);

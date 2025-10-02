@@ -2,17 +2,16 @@ import React from 'react';
 import { useChannelState } from '../context/ChannelContext.jsx';
 
 function ChannelButton({ name }) {
-    const { updateChannelValue } = useChannelState();
+    const { updateChannelValue, channelValue } = useChannelState();
     const handleClick = () => {
-        // Remove # prefix when storing in context
-        const channelName = name.startsWith('#') ? name.slice(1) : name;
-        console.log('Selected channel:', channelName);
-        updateChannelValue(channelName);
+        console.log('Selected channel:', name);
+        updateChannelValue(name);
     }
-    
+    const textColor = name === `${channelValue}` ? 'text-green-700' : 'text-gray-500';
+
     return(
         <div>
-            <button onClick={handleClick}>{name}</button>
+            <button onClick={handleClick} className={`${textColor}`}>{name}</button>
         </div>
     )
 }

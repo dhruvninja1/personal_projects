@@ -38,15 +38,12 @@ io.on('connection', (socket) => {
         msg = message; 
         users[socket.id] = {'username': msg, 'admin' : false, 'muted' : false};
         console.log(socket.id + " : " + users[socket.id].username);
-        const joinMessage = new messageObject("System",`${msg} has joined the chat`, "orange");
-        io.emit('chat message', joinMessage);
         console.log(users[socket.id])
         for (let c in channels){
             const joinChannelMessage = new messageObject("System",`${channels[c]}`, "orange");
             socket.emit('add channel message', joinChannelMessage);
         }
         
-        // Send updated user list after username is set
         temp = [];
         for (let u in users){
             temp.push(users[u].username);
