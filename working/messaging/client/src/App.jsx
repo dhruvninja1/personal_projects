@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import MessageContainer from './components/MessageContainer'
-import UsernameForm from './components/UsernameForm'
 import ChannelList from './components/ChannelList'
 import UserList from './components/UserList'
+import SignInForm from './components/SignInForm';
 
 function App(){
     return(
         <div>
             <div className='flex justify-left'>
-            <UsernameForm></UsernameForm>
+            <SignInForm></SignInForm>
             <ChannelList></ChannelList>
             <MessageContainer></MessageContainer>
             <UserList></UserList>

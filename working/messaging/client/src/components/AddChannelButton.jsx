@@ -14,9 +14,9 @@ function AddChannelButton(){
     }
     
     return(
-        <div>
-            <button onClick={handleAddChannel}>+</button>
-            <input type="text" placeholder="Channel Name" value={channelName} onChange={(e) => setChannelName(e.target.value)} />
+        <div style={{gap: '2px'}}>
+            <button className="border-2 border-gray-100 rounded-full p-2" onClick={handleAddChannel}>+</button>
+            <input className="border-2 border-gray-100 rounded-md p-2" type="text" placeholder="Channel Name" value={channelName} onChange={(e) => setChannelName(e.target.value)} />
         </div>
     )
 }

@@ -18,6 +18,7 @@ function MessageContainer(){
                 ...prevMessages, 
                 {...newMessage, id: Date.now()} 
             ]);
+
         };
 
         socket.on('chat message', handleNewMessage);
