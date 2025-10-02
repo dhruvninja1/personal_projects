@@ -19,6 +19,7 @@ function MessageForm(){
     
     const handleSelect = (emoji) => {
         setMsg(msg + emoji.native);
+        setIsEmojiPickerOpen(false);
     };
     
     const handleEmojiToggle = () => {
@@ -26,20 +27,23 @@ function MessageForm(){
     };
     
     return (
-        <div>
+        <div className="relative">
+            {isEmojiPickerOpen && ( 
+                <div className="absolute bottom-full mb-2 z-50 right-0">
+                    <Picker data={data} onEmojiSelect={handleSelect} />
+                </div>
+            )}
             <form onSubmit={handleSubmit}>
                 <input
                     type="text"
                     value={msg}
                     onChange={(e) => setMsg(e.target.value)}
-                    className="border-2 border-gray-300 rounded-md p-2">
+                    className="border-2 border-gray-300 rounded-md p-2 w-5/6">
                 </input>
                 <button type="button" onClick={handleEmojiToggle} className="rounded-md p-2 text-2xl">😀</button> 
                 <button type="submit" className="text-2xl">☝</button>
             </form>
-            {isEmojiPickerOpen && ( 
-                <Picker data={data} onEmojiSelect={handleSelect} />
-            )}
+            
         </div>
     )
 }

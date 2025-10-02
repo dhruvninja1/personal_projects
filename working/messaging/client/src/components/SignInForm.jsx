@@ -2,6 +2,7 @@ import { auth, provider } from "../firebase";
 import { signInWithPopup } from "firebase/auth";
 import React from "react";
 import { useAuth } from "../context/AuthContext";
+import iconImage from "../images/icon.png";
 
 function SignInForm() {
   const { user, signOut } = useAuth();
@@ -47,6 +48,7 @@ function SignInForm() {
         </>
       ) : (
         <div style={{ position: 'fixed', bottom: '10px', left: '10px', zIndex: 1000 }}>
+          <img src={iconImage} style={{ width: '40px', height: '40px', marginRight: '10px' }} alt="User icon"></img>
           <span style={{ marginRight: '10px', color: 'black' }}>
             Welcome, {user.displayName || user.email}!
           </span>
