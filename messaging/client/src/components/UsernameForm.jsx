@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useUsernameState } from '../UsernameContext';
+import { useUsernameState } from '../context/UsernameContext.jsx';
 import { useSocket } from './socket';
 
 function UsernameForm() {
