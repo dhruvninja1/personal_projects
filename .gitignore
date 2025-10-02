@@ -1,11 +1,2 @@
-.venv/*
-personal/*
-test.py
-wordle_data.json
-discordbotgag/.env
-.DS_Store
-.vscode
-cpp/messagingServer/logs/
-cpp/messagingServer/ChatClientQt/build/*
-messaging/client/node_modules
-messaging/server/node_modules
+working/messaging/client/node_modules
+working/messaging/server/node_modules
