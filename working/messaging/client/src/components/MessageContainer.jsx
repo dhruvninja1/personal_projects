@@ -27,20 +27,23 @@ function MessageContainer(){
             socket.off('chat message', handleNewMessage);
         };
     }, [socket]);
+    // Filter messages for current channel first
+    const filteredMessages = messages.filter(msg => 
+        msg.channel === channelValue || msg.channel === 'all'
+    );
+
     return(
         <div>
             <div className='h-[90vh] w-[70vw] overflow-y-auto border-2 border-gray-300 rounded-md p-2'>
-                {messages.map((msg, index) => 
-                    msg.channel === channelValue || msg.channel === 'all' ? (
+                {filteredMessages.map((msg, index) => (
                     <Message
                         key={msg.id}
-                        sender={index === 0 || messages[index - 1].sender !== msg.sender ? msg.sender : null}          
+                        sender={index === 0 || filteredMessages[index - 1].sender !== msg.sender ? msg.sender : null}          
                         content={msg.content}
                         timestamp={msg.timestamp}
                         color={msg.color}>
                     </Message>
-                    ) : null
-                )}
+                ))}
             </div>
             <MessageForm></MessageForm>
         </div>
