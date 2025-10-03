@@ -48,7 +48,11 @@ function SignInForm() {
         </>
       ) : (
         <div style={{ position: 'fixed', bottom: '10px', left: '10px', zIndex: 1000 }}>
-          <img src={iconImage} style={{ width: '40px', height: '40px', marginRight: '10px' }} alt="User icon"></img>
+          <span className="flex items-center">
+            <img src={iconImage} style={{ width: '40px', height: '40px', marginRight: '10px' }} alt="User icon"></img>
+            <a href = "https://docs.google.com/document/d/14qthcysK_eHjf15sBIM0eqJcFroW6JJlvqlsofu_LA0/edit?usp=sharing" className="text-xs text-gray-500">TOS</a>
+            </span>
+          
           <span style={{ marginRight: '10px', color: 'black' }}>
             Welcome, {user.displayName || user.email}!
           </span>
