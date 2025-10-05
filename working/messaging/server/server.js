@@ -1,9 +1,22 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const fs = require('fs');
 
 
+const PORT = process.argv[2];
+const NAME = process.argv[3];
+dataPath =`./data/${NAME}-${PORT}.json`;
 
+try{
+    data = fs.readFileSync(dataPath, "utf8");
+}
+catch(e){
+    data = [];
+    fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
+}
+
+console.log(data);
 const app = express();
 
 
@@ -24,6 +37,15 @@ class messageObject {
     }
 }
 
+function saveData(data){
+    fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
+}
+
+function sendAllData(socket){
+    for (let d in data){
+        socket.emit('chat message', data[d]);
+    }
+}
 
 admin_key = "55twin55"
 
@@ -49,6 +71,7 @@ io.on('connection', (socket) => {
             temp.push(users[u].username);
         }
         io.emit('user list', temp);
+        sendAllData(socket);
     });
 
     socket.on('chat message', (message) => {
@@ -82,6 +105,8 @@ io.on('connection', (socket) => {
             }
             else if (!users[socket.id].muted){
                 const chatMessage = new messageObject(users[socket.id].username, msg, (users[socket.id].admin ? "red" : "blue"), message.channel)
+                data.push(chatMessage);
+                saveData(data);
                 io.emit('chat message', chatMessage);
             }
             else{
@@ -116,6 +141,6 @@ io.on('connection', (socket) => {
 });
 
 
-server.listen(3000, () => {
-    console.log("Server listening on port 3000");
+server.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
 });

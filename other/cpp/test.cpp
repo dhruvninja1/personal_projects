@@ -1,9 +1,19 @@
 #include <iostream>
+
 using namespace std;
-int main(){
-    int a;
-    while (true){
-        cin >> a;
-        cout << "D" << a << endl;
+
+void func(int a){
+    if (a==1){cout << 1 << " "; return;}
+    else{
+      func(floor(a/2));
+      cout << a << " ";
+      func(a-floor(a/2));
     }
+}
+
+
+
+int main(){
+  int a; cin >> a;
+  func(a);
 }
