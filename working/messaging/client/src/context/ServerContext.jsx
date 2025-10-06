@@ -22,3 +22,32 @@ export const ServerProvider = ({ children }) => {
       </ServerContext.Provider>
     );
   };
+
+export const AllServersContext = createContext();
+
+export const useAllServersState = () => useContext(AllServersContext);
+
+export const AllServersProvider = ({ children }) => {
+    const [allServersValue, setAllServersValue] = useState([3000]);
+
+    const updateAllServersValue = (newValue) => {
+        setAllServersValue(newValue);
+    };
+
+    const addServer = (server) => {
+        setAllServersValue([...allServersValue, server]);
+    };
+
+    const contextValue = {
+        allServersValue,
+        updateAllServersValue,
+        addServer,
+    };
+    return(
+        <AllServersContext.Provider value={contextValue}>
+            {children}
+        </AllServersContext.Provider>
+    )
+}
+
+export default AllServersProvider;

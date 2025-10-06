@@ -37,7 +37,7 @@ function MessageContainer(){
             <div className='h-[90vh] w-[70vw] overflow-y-auto border-2 border-gray-300 rounded-md p-2'>
                 {filteredMessages.map((msg, index) => (
                     <Message
-                        key={msg.id}
+                        key={index}
                         sender={index === 0 || filteredMessages[index - 1].sender !== msg.sender ? msg.sender : null}          
                         content={msg.content}
                         timestamp={msg.timestamp}
