@@ -3,6 +3,7 @@ import { signInWithPopup } from "firebase/auth";
 import React from "react";
 import { useAuth } from "../context/AuthContext";
 import iconImage from "../images/icon.png";
+import Overlay from "./Overlay";
 
 function SignInForm() {
   const { user, signOut } = useAuth();
@@ -25,14 +26,7 @@ function SignInForm() {
     <div>
       {!user ? (
         <>
-          <div className="overlay" id="overlay" style={{ position: 'fixed', 
-                                                           top: 0, 
-                                                           left: 0, 
-                                                           width: '100%', 
-                                                           height: '100%', 
-                                                           backgroundColor: 'rgba(0, 0, 0, 0.5)', 
-                                                           zIndex: 999 }}>
-          </div>
+          <Overlay></Overlay>
           <button onClick={handleSignIn} style={{ position: 'fixed',
             top: '50%',
             left: '50%',

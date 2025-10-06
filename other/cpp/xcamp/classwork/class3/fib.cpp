@@ -12,8 +12,8 @@ bigint fib_recursive(int a){
 
 
 bigint fib_iterative(int a){
-    bigint n1 = 0;
-    bigint n2 = 1;
+    bigint n1 = 1;
+    bigint n2 = 2;
     bigint temp = 0;
     for (int i=1; i<a; i++){
         temp = n1+n2;
