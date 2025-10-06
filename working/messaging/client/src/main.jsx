@@ -5,15 +5,18 @@ import './index.css';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { UsernameProvider } from './context/UsernameContext.jsx';
 import { ChannelProvider } from './context/ChannelContext.jsx';
+import { ServerProvider } from './context/ServerContext.jsx';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
+    <UsernameProvider>
+    <ServerProvider>
     <AuthProvider>
-      <UsernameProvider>
         <ChannelProvider>
           <App></App>
         </ChannelProvider>
-      </UsernameProvider>
     </AuthProvider>
-  </React.StrictMode>,
+    </ServerProvider>
+    </UsernameProvider>
+  </React.StrictMode>
 );

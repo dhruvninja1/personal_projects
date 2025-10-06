@@ -12,7 +12,6 @@ function SignInForm() {
     try {
       const result = await signInWithPopup(auth, provider);
       console.log(result.user);
-      // Username will be automatically updated via AuthContext -> UsernameContext
     } catch (error) {
       console.error('Error signing in:', error);
     }

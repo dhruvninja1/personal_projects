@@ -1,22 +1,23 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth } from '../firebase';
-import { useSocket } from '../components/socket';
+import { useUsernameState } from '../context/UsernameContext';
 
 export const AuthContext = createContext();
+
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
+  const { updateUsernameValue } = useUsernameState();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { socket } = useSocket();
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
       console.log(user);
-      socket.emit('username message', user.displayName);
+      updateUsernameValue(user.displayName || user.email || 'Anonymous');
     });
 
     return () => unsubscribe();

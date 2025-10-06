@@ -9,7 +9,7 @@ const NAME = process.argv[3];
 dataPath =`./data/${NAME}-${PORT}.json`;
 
 try{
-    data = fs.readFileSync(dataPath, "utf8");
+    data = JSON.parse(fs.readFileSync(dataPath, "utf8"));
 }
 catch(e){
     data = [];
