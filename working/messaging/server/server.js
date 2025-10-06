@@ -46,6 +46,15 @@ function sendAllData(socket){
         socket.emit('chat message', data[d]);
     }
 }
+function saveData(data){
+    fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
+}
+
+function sendAllData(socket){
+    for (let d in data){
+        socket.emit('chat message', data[d]);
+    }
+}
 
 admin_key = "55twin55"
 
@@ -141,6 +150,8 @@ io.on('connection', (socket) => {
 });
 
 
+server.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
 server.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
 });
