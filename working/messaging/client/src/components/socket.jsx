@@ -7,6 +7,7 @@ let globalSocket = null;
 let globalIsConnected = false;
 let lastEmittedUsername = null;
 let currentServerPort = null;
+let usernameEmittedForCurrentServer = false;
 const connectionListeners = new Set();
 
 const updateConnectionState = (connected) => {
@@ -22,6 +23,7 @@ const getSocket = (serverValue) => {
       globalSocket = null;
     }
     currentServerPort = serverValue;
+    usernameEmittedForCurrentServer = false; // Reset username emission flag for new server
   }
   
   if (!globalSocket || globalSocket.disconnected) {
@@ -30,11 +32,7 @@ const getSocket = (serverValue) => {
     globalSocket.on('connect', () => {
       console.log(`Connected to server on port ${serverValue}`);
       updateConnectionState(true);
-      // Emit username immediately after connection
-      if (lastEmittedUsername) {
-        globalSocket.emit('username message', lastEmittedUsername);
-        console.log(`Re-emitted username: ${lastEmittedUsername}`);
-      }
+      // Don't emit username here - let the useEffect handle it
     });
     globalSocket.on('disconnect', () => {
       console.log(`Disconnected from server on port ${serverValue}`);
@@ -46,9 +44,10 @@ const getSocket = (serverValue) => {
 };
 
 const emitUsername = (username, forceEmit = false) => {
-  if (globalSocket && globalIsConnected && username && username !== 'Anonymous' && (forceEmit || username !== lastEmittedUsername)) {
+  if (globalSocket && globalIsConnected && username && username !== 'Anonymous' && (forceEmit || username !== lastEmittedUsername) && !usernameEmittedForCurrentServer) {
     globalSocket.emit('username message', username);
     lastEmittedUsername = username;
+    usernameEmittedForCurrentServer = true;
     console.log(`Emitted username: ${username}`);
   }
 };
@@ -75,9 +74,12 @@ export const useSocket = () => {
   // Force emit username when server changes and we're connected
   useEffect(() => {
     if (globalIsConnected && usernameValue && usernameValue !== 'Anonymous') {
-      emitUsername(usernameValue, true);
+      // Only emit if we haven't already emitted for this server
+      if (currentServerPort === serverValue) {
+        emitUsername(usernameValue, true);
+      }
     }
-  }, [serverValue, globalIsConnected]);
+  }, [serverValue, globalIsConnected, usernameValue]);
 
   return { socket: globalSocket, isConnected };
 };

@@ -3,6 +3,7 @@ import Message from './Message'
 import MessageForm from './MessageForm'
 import { useSocket } from './socket'
 import { useChannelState } from '../context/ChannelContext.jsx';
+import { useServerState } from '../context/ServerContext.jsx';
 
 function MessageContainer(){
     const [messages, setMessages] = useState([
@@ -10,17 +11,27 @@ function MessageContainer(){
     ]);
     const { socket } = useSocket();
     const { channelValue } = useChannelState();
+    const { serverValue } = useServerState();
+    
+    // Clear messages when server changes
+    useEffect(() => {
+        setMessages([
+            { id: 1, sender: "System", content: "Connection is pending...", timestamp: new Date().toLocaleTimeString(), color: "orange"},
+        ]);
+    }, [serverValue]);
     
     useEffect(() => {
         if (!socket) return;
+        
         const handleNewMessage = (newMessage) => {
             setMessages(prevMessages => [
                 ...prevMessages, 
                 {...newMessage, id: Date.now()} 
             ]);
-
         };
 
+        // Remove any existing listeners first
+        socket.off('chat message', handleNewMessage);
         socket.on('chat message', handleNewMessage);
         
         return () => {
