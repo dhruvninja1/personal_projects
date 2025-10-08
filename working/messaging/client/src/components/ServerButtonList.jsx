@@ -9,7 +9,7 @@ function ServerButtonList(){
         <div>
             <div>
                 {allServersValue.map((server) => (
-                    <ServerButton key={server} port={server}></ServerButton>
+                    <ServerButton key={server.serverPort} port={server.serverPort} name={server.serverName}></ServerButton>
                 ))}
             </div>
             <AddServerButton></AddServerButton>

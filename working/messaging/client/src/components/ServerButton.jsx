@@ -1,6 +1,6 @@
 import { useServerState } from '../context/ServerContext';
 
-function ServerButton({ key, port }){
+function ServerButton({ key, port, name }){
     const { serverValue, updateServerValue } = useServerState();
     const handleClick = () => {
         console.log('Switching to server:', port);
@@ -8,7 +8,7 @@ function ServerButton({ key, port }){
         console.log('Server selected:', port);
     }
     return(
-        <button onClick={handleClick}>Test</button>
+        <button style={{border: '1px solid gray', borderRadius: 'md', padding: '2px'}} onClick={handleClick}>{name}</button>
     )
 }
 

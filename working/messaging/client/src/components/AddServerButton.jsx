@@ -13,11 +13,25 @@ function AddServerButton(){
     function handleButtonClick(){
         toggleDisplay();
     }
-    function handleAddServer(){
-
-        addServer(serverPort);
-        console.log('Server added:', serverPort);
-        toggleDisplay();
+    async function handleAddServer(){
+        console.log('Adding server:', serverPort);
+        const response = await fetch('http://localhost:3002/joinServer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({port: parseInt(serverPort)}),
+        });
+        const data = await response.json();
+        if (data.status === 'success'){
+            addServer({serverPort: parseInt(serverPort), serverName: data.serverName});
+            console.log('Server added:', serverPort, data.serverName);
+            toggleDisplay();
+        }
+        else{
+            console.log('Server addition failed:', data.serverName);
+            toggleDisplay();
+        }
     }
     
     return(
