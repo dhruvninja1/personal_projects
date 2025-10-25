@@ -1,19 +1,9 @@
 #include <iostream>
-
+#include <vector>
 using namespace std;
 
-void func(int a){
-    if (a==1){cout << 1 << " "; return;}
-    else{
-      func(floor(a/2));
-      cout << a << " ";
-      func(a-floor(a/2));
-    }
-}
 
-
-
-int main(){
-  int a; cin >> a;
-  func(a);
+int main() {
+    int n, p; cin >> n >> p;
+    cout << (n*n + n - p*p + p + 4)/2;
 }

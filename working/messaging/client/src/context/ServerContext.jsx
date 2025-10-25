@@ -28,7 +28,7 @@ export const AllServersContext = createContext();
 export const useAllServersState = () => useContext(AllServersContext);
 
 export const AllServersProvider = ({ children }) => {
-    const [allServersValue, setAllServersValue] = useState([3000]);
+    const [allServersValue, setAllServersValue] = useState([{serverPort: 3000, serverName: "test"}]);
 
     const updateAllServersValue = (newValue) => {
         setAllServersValue(newValue);

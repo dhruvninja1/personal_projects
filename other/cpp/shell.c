@@ -18,7 +18,6 @@ int main(){
             exit(0);
         }
         
-        // Handle cd command specially
         if (strncmp(command, "cd ", 3) == 0) {
             char *path = command + 3;
             if (chdir(path) != 0) {
