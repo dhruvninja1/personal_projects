@@ -8,6 +8,16 @@ export const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
 
+async function createUserOnBackend(user){
+  const response = await fetch('http://localhost:3002/createUser', {
+      method: 'POST',
+      headers: {
+          'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({email: user.email, username: user.displayName}),
+  });
+}
+
 export const AuthProvider = ({ children }) => {
   const { updateUsernameValue } = useUsernameState();
   const [user, setUser] = useState(null);
@@ -18,6 +28,7 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
       console.log(user);
       updateUsernameValue(user.displayName || user.email || 'Anonymous');
+      createUserOnBackend(user);
     });
 
     return () => unsubscribe();
