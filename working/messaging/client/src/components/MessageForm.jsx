@@ -3,18 +3,22 @@ import React, { useState } from 'react';
 import data from '@emoji-mart/data'
 import Picker from '@emoji-mart/react'
 import { useChannelState } from '../context/ChannelContext.jsx';
-
+import { useServerState } from "../context/ServerContext.jsx";
+import { useUsernameState } from "../context/UsernameContext.jsx";
 function MessageForm(){
     const [msg, setMsg] = useState('');
     const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false); 
     const { socket, isConnected } = useSocket();
     const { channelValue } = useChannelState();
-    
+    const { serverValue } = useServerState();
+    const { username } = useUsernameState();
+
     const handleSubmit = (event) => {
         event.preventDefault(); 
         console.log('Form submitted with name:', msg);
         setMsg('');
-        socket.emit('chat message', {'message': msg, 'channel': channelValue});
+        if (serverValue == 3000){socket.emit('chat message', {'sender': username, 'reciever': channelValue, 'content': msg});}
+        else{socket.emit('chat message', {'message': msg, 'channel': channelValue});}
     };
     
     const handleSelect = (emoji) => {

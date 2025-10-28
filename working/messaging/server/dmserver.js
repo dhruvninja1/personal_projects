@@ -5,8 +5,8 @@ const fs = require('fs');
 
 
 const PORT = 3000;
-const NAME = dms
-dataPath =`./data/${NAME}-${PORT}.json`;
+const NAME = 'dms'
+let dataPath =`./data/${NAME}-${PORT}.json`;
 
 try{
     data = JSON.parse(fs.readFileSync(dataPath, "utf8"));
@@ -42,7 +42,7 @@ function saveData(data){
 
 function sendAllDataToUser(socket){
     for (let d in data){
-        if (d.reciever == users[socket.id][username]){
+        if (d.reciever == users[socket.id].username){
             socket.emit('chat message', data[d]);
         }
     }
@@ -53,28 +53,34 @@ function saveData(data){
 }
 
 
-
-users={};
-channels=['general'];
+let users={};
+let channels=['general'];
 
 
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
-
     socket.on('username message', (message) =>{
-
+        msg = message; 
+        users[socket.id] = {'username': msg, 'admin' : false, 'muted' : false, 'socket' : socket};
+        console.log(socket.id + " : " + users[socket.id].username);
+        sendAllDataToUser(socket);
     });
 
     socket.on('chat message', (message) => {
-    });
-
-
-    socket.on('add friend message', (msg) => {
-    
+        const chatMessage = new DMObject(message.sender, message.reciever, message.content);
+        data.push(chatMessage);
+        saveData(data);
+        for (let user in users){
+            if (user.username === chatMessage.reciever || user.username == chatMessage.sender){
+                tempSocket = user.socket;
+                tempSocket.emit('chat message', chatMessage);
+            }
+        }
     });
 
     socket.on('disconnect', () => {
-  });
+        delete users[socket.id];
+    });
 });
 
 
