@@ -5,13 +5,26 @@ const { exec } = require('child_process');
 const cors = require('cors');
 const fs = require('fs');
 const PORT = 3002;
-app.use(cors());
+
+const https = require('https');
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 openServers={3000: "dms", 434: "test"};
+
+const options = {
+    key: fs.readFileSync('../key/192.168.1.172+1-key.pem'),
+    cert: fs.readFileSync('../key/192.168.1.172+1.pem')
+};
 
 userDataFile = "data/userData.json";
 users = JSON.parse(fs.readFileSync(userDataFile, "utf8"));
 console.log(users);
+
+
 
 app.post('/createServer', (req, res) => {
     data = req.body;
@@ -56,6 +69,8 @@ app.post('/addFriend', (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
+server = https.createServer(options, app);
+
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`);
 });

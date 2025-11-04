@@ -1,8 +1,12 @@
 const express = require('express');
-const http = require('http');
+const https = require('https');
 const { Server } = require('socket.io');
 const fs = require('fs');
 
+const options = {
+    key: fs.readFileSync('../key/192.168.1.172+1-key.pem'),
+    cert: fs.readFileSync('../key/192.168.1.172+1.pem')
+};
 
 const PORT = 3000;
 const NAME = 'dms'
@@ -19,7 +23,7 @@ catch(e){
 const app = express();
 
 
-const server = http.createServer(app);
+const server = https.createServer(options, app);
 const io = new Server(server, {cors: {
         origin: "*",
         methods: ["GET", "POST"]
@@ -78,7 +82,7 @@ io.on('connection', (socket) => {
 
     socket.on('chat message', (message) => {
         const chatMessage = new messageObject(message.sender, message.content, "blue", message.reciever);
-        if (!(users[socket.id].channels.includes(message.channel))){
+        if (!(users[socket.id].channels.includes(chatMessage.channel))){
             users[socket.id].channels.push(chatMessage.channel);
         }
         console.log(chatMessage);
@@ -112,6 +116,6 @@ io.on('connection', (socket) => {
 });
 
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`);
 });

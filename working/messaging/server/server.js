@@ -1,8 +1,12 @@
 const express = require('express');
-const http = require('http');
+const https = require('https');
 const { Server } = require('socket.io');
 const fs = require('fs');
 
+const options = {
+    key: fs.readFileSync('../key/192.168.1.172+1-key.pem'),
+    cert: fs.readFileSync('../key/192.168.1.172+1.pem')
+};
 
 const PORT = process.argv[2];
 const NAME = process.argv[3];
@@ -20,7 +24,7 @@ console.log(data);
 const app = express();
 
 
-const server = http.createServer(app);
+const server = https.createServer(options, app);
 const io = new Server(server, {cors: {
         origin: "*",
         methods: ["GET", "POST"]
@@ -150,6 +154,6 @@ io.on('connection', (socket) => {
 });
 
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`);
 });

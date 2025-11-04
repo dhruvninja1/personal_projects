@@ -27,7 +27,10 @@ const getSocket = (serverValue) => {
   }
   
   if (!globalSocket || globalSocket.disconnected) {
-    globalSocket = io(`http://localhost:${serverValue}`);
+    globalSocket = io(`https://192.168.1.172:${serverValue}`, {
+      transports: ['websocket', 'polling'],
+      secure: true
+    });
     
     globalSocket.on('connect', () => {
       console.log(`Connected to server on port ${serverValue}`);
