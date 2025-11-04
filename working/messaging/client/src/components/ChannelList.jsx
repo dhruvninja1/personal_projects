@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useSocket } from './socket';
 import ChannelButton from './ChannelButton';
 import AddChannelButton from './AddChannelButton';
+import { useServerState } from '../context/ServerContext.jsx';
 
 function ChannelList(){
     const [messages, setMessages] = useState([
     ]);
     const { socket } = useSocket();
-    
+    const { serverValue } = useServerState();
     useEffect(() => {
         if (!socket) return;
         const handleNewMessage = (newMessage) => {
@@ -32,7 +33,7 @@ function ChannelList(){
                 {messages.map((msg, index) => (
                     <ChannelButton 
                         key={index}
-                        name={`#${msg.content}`}>
+                        name={serverValue == 3000 ? `${msg.content}` : `#${msg.content}`}>
                     </ChannelButton>
                 ))}
             </div>

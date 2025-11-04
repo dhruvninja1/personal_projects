@@ -11,13 +11,14 @@ function MessageForm(){
     const { socket, isConnected } = useSocket();
     const { channelValue } = useChannelState();
     const { serverValue } = useServerState();
-    const { username } = useUsernameState();
+    const { usernameValue } = useUsernameState();
 
     const handleSubmit = (event) => {
         event.preventDefault(); 
         console.log('Form submitted with name:', msg);
         setMsg('');
-        if (serverValue == 3000){socket.emit('chat message', {'sender': username, 'reciever': channelValue, 'content': msg});}
+        console.log(usernameValue);
+        if (serverValue == 3000){socket.emit('chat message', {'sender': usernameValue, 'reciever': channelValue, 'content': msg}); console.log('chat message', {'sender': usernameValue, 'reciever': channelValue, 'content': msg});}
         else{socket.emit('chat message', {'message': msg, 'channel': channelValue});}
     };
     

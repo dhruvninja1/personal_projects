@@ -9,9 +9,19 @@ function AddChannelButton(){
     const { serverValue } = useServerState();
     const { socket } = useSocket();
     
-    function handleAddChannel(){
+    async function handleAddChannel(){
         if (serverValue == 3000){
-            socket.emit('add friend message', channelName);
+            const response = await fetch('http://localhost:3002/addFriend', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({email: channelName})
+            });
+            const data = await response.json();
+            if (data.status == "success"){
+                socket.emit('add friend message', data.username);
+            }
         }
         else{
             socket.emit('add channel message', channelName);

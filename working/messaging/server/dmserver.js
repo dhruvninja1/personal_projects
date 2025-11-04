@@ -16,7 +16,6 @@ catch(e){
     fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
 }
 
-console.log(data);
 const app = express();
 
 
@@ -26,6 +25,16 @@ const io = new Server(server, {cors: {
         methods: ["GET", "POST"]
     }
 });
+
+class messageObject {
+    constructor(sender, content, color, channel='all', timestamp = new Date().toLocaleTimeString()){
+        this.sender = sender;
+        this.content = content;
+        this.channel = channel;
+        this.color = color
+        this.timestamp = timestamp;
+    }
+}
 
 class DMObject {
     constructor(sender, reciever, content, timestamp = new Date().toLocaleTimeString()){
@@ -42,10 +51,12 @@ function saveData(data){
 
 function sendAllDataToUser(socket){
     for (let d in data){
-        if (d.reciever == users[socket.id].username){
+        if (d.reciever == users[socket.id].username || d.sender == users[socket.id].username || d.reciever == 'general'){
             socket.emit('chat message', data[d]);
         }
     }
+    addChannelMessage = new messageObject("System", 'general', "orange", "all", new Date().toLocaleTimeString());
+    socket.emit('add channel message', addChannelMessage);
 }
 
 function saveData(data){
@@ -54,32 +65,49 @@ function saveData(data){
 
 
 let users={};
-let channels=['general'];
+let channels = ['general'];
 
 
 io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
     socket.on('username message', (message) =>{
         msg = message; 
-        users[socket.id] = {'username': msg, 'admin' : false, 'muted' : false, 'socket' : socket};
+        users[socket.id] = {'username': msg, 'admin' : false, 'muted' : false, 'socket' : socket, 'channels' : ["general"]};
         console.log(socket.id + " : " + users[socket.id].username);
         sendAllDataToUser(socket);
     });
 
     socket.on('chat message', (message) => {
-        const chatMessage = new DMObject(message.sender, message.reciever, message.content);
+        const chatMessage = new messageObject(message.sender, message.content, "blue", message.reciever);
+        if (!(users[socket.id].channels.includes(message.channel))){
+            users[socket.id].channels.push(chatMessage.channel);
+        }
+        console.log(chatMessage);
         data.push(chatMessage);
         saveData(data);
-        for (let user in users){
-            if (user.username === chatMessage.reciever || user.username == chatMessage.sender){
+        for (let socketID in users){
+            var user = users[socketID];
+            if (user.username === chatMessage.channel || user.username == chatMessage.sender || chatMessage.channel == "general"){
                 tempSocket = user.socket;
+                if (user.username != chatMessage.sender && chatMessage.channel !== 'general'){
+                    if (!(user.channels.includes(chatMessage.sender))){
+                        user.channels.push(chatMessage.sender);
+                        addChannelMessage = new messageObject("System", chatMessage.sender, "orange", "all", new Date().toLocaleTimeString());
+                        tempSocket.emit('add channel message', addChannelMessage);
+                    }
+                }
                 tempSocket.emit('chat message', chatMessage);
+                console.log("emmitiing mesg");
             }
         }
     });
 
     socket.on('disconnect', () => {
         delete users[socket.id];
+    });
+
+    socket.on('add friend message', (msg) => {
+        addChannelMessage = new messageObject("System", msg, "orange", "all", new Date().toLocaleTimeString());
+        socket.emit('add channel message', addChannelMessage);
     });
 });
 

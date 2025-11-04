@@ -9,7 +9,7 @@ app.use(cors());
 app.use(express.json());
 openServers={3000: "dms", 434: "test"};
 
-userDataFile = "userData.json";
+userDataFile = "data/userData.json";
 users = JSON.parse(fs.readFileSync(userDataFile, "utf8"));
 console.log(users);
 
@@ -23,7 +23,6 @@ app.post('/createServer', (req, res) => {
     exec(`node server.js ${testport} ${serverName}`);
     res.send(testport);
     openServers[testport] = serverName;
-
 });
 
 app.post('/joinServer', (req, res) => {
@@ -45,6 +44,16 @@ app.post('/createUser', (req, res) => {
     console.log(users);
     fs.writeFileSync(userDataFile, JSON.stringify(users, null, 2));
     res.json({status: "success"});
+});
+
+app.post('/addFriend', (req, res) => { 
+    body = req.body;
+    if (users[body.email]){
+        res.json({status : "success", username : users[body.email]});
+    }
+    else{
+        res.json({status : 'fail', username : undefined});
+    }
 });
 
 app.listen(PORT, () => {

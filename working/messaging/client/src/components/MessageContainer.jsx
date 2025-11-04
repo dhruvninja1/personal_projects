@@ -28,6 +28,7 @@ function MessageContainer(){
                 ...prevMessages, 
                 {...newMessage, id: Date.now()} 
             ]);
+            console.log(newMessage);
         };
 
         // Remove any existing listeners first
@@ -40,7 +41,7 @@ function MessageContainer(){
     }, [socket]);
     // Filter messages for current channel first
     const filteredMessages = messages.filter(msg => 
-        msg.channel === channelValue || msg.channel === 'all'
+        msg.channel === channelValue || msg.channel === 'all' || msg.sender === channelValue
     );
 
     return(
