@@ -1,4 +1,4 @@
-function Overlay(){
+function Overlay({zIndex = 999}){
     return(
         <div className="overlay" id="overlay" style={{ position: 'fixed', 
                                                            top: 0, 
@@ -6,7 +6,7 @@ function Overlay(){
                                                            width: '100%', 
                                                            height: '100%', 
                                                            backgroundColor: 'rgba(0, 0, 0, 0.5)', 
-                                                           zIndex: 999 }}>
+                                                           zIndex: {zIndex} }}>
           </div>
     )
 }

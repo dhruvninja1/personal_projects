@@ -9,7 +9,7 @@ export const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 async function createUserOnBackend(user){
-  const response = await fetch('https://192.168.1.172:3002/createUser', {
+  const response = await fetch('https://localhost:3002/createUser', {
       method: 'POST',
       headers: {
           'Content-Type': 'application/json',

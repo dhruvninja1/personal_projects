@@ -11,7 +11,7 @@ function AddChannelButton(){
     
     async function handleAddChannel(){
         if (serverValue == 3000){
-            const response = await fetch('https://192.168.1.172:3002/addFriend', {
+            const response = await fetch('https://localhost:3002/addFriend', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -25,6 +25,7 @@ function AddChannelButton(){
         }
         else{
             socket.emit('add channel message', channelName);
+            console.log("d")
         }
         setChannelName('');
         updateChannelValue(channelName);

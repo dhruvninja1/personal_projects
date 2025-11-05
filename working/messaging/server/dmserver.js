@@ -40,14 +40,6 @@ class messageObject {
     }
 }
 
-class DMObject {
-    constructor(sender, reciever, content, timestamp = new Date().toLocaleTimeString()){
-        this.sender = sender;
-        this.content = content;
-        this.reciever = reciever;
-        this.timestamp = timestamp;
-    }
-}
 
 function saveData(data){
     fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));

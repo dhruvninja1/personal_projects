@@ -5,13 +5,13 @@ import AddChannelButton from './AddChannelButton';
 import { useServerState } from '../context/ServerContext.jsx';
 
 function ChannelList(){
-    const [messages, setMessages] = useState([
-    ]);
+    const [messages, setMessages] = useState([]);
     const { socket } = useSocket();
     const { serverValue } = useServerState();
     useEffect(() => {
-        if (!socket) return;
+        if (!socket){ console.log('bug'); return;}
         const handleNewMessage = (newMessage) => {
+            console.log("got channel" + newMessage.content);
             setMessages(prevMessages => [
                 ...prevMessages, 
                 {...newMessage, id: Date.now()} 

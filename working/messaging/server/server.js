@@ -60,7 +60,7 @@ function sendAllData(socket){
     }
 }
 
-admin_key = "55twin55"
+admin_key = null;
 
 users={};
 channels=['general'];

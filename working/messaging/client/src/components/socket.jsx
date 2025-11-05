@@ -27,7 +27,7 @@ const getSocket = (serverValue) => {
   }
   
   if (!globalSocket || globalSocket.disconnected) {
-    globalSocket = io(`https://192.168.1.172:${serverValue}`, {
+    globalSocket = io(`https://localhost:${serverValue}`, {
       transports: ['websocket', 'polling'],
       secure: true
     });
@@ -46,7 +46,7 @@ const getSocket = (serverValue) => {
   return globalSocket;
 };
 
-const emitUsername = (username, forceEmit = false) => {
+export const emitUsername = (username, forceEmit = false) => {
   if (globalSocket && globalIsConnected && username && username !== 'Anonymous' && (forceEmit || username !== lastEmittedUsername) && !usernameEmittedForCurrentServer) {
     globalSocket.emit('username message', username);
     lastEmittedUsername = username;

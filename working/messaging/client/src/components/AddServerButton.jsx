@@ -15,7 +15,7 @@ function AddServerButton(){
     }
     async function handleAddServer(){
         console.log('Adding server:', serverPort);
-        const response = await fetch('https://192.168.1.172:3002/joinServer', {
+        const response = await fetch('https://localhost:3002/joinServer', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
