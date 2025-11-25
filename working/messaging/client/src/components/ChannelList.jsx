@@ -6,24 +6,27 @@ import { useServerState } from '../context/ServerContext.jsx';
 
 function ChannelList(){
     const [messages, setMessages] = useState([]);
-    const { socket } = useSocket();
+    const { socket, isConnected } = useSocket();
     const { serverValue } = useServerState();
     useEffect(() => {
         if (!socket){ console.log('bug'); return;}
         const handleNewMessage = (newMessage) => {
             console.log("got channel" + newMessage.content);
             setMessages(prevMessages => [
-                ...prevMessages, 
+                ...prevMessages,
                 {...newMessage, id: Date.now()} 
             ]);
         };
-
+        console.log(socket);
+        socket.on('connect', () => {
+            console.log("IMPORTANT connected to server");
+        });
         socket.on('add channel message', handleNewMessage);
-        
+        console.log("listening to add channel message");
         return () => {
             socket.off('add channel message', handleNewMessage);
         };
-    }, [socket]);
+    }, [socket, serverValue, isConnected]);
     return(
         <div className='p-2'>
             <div>

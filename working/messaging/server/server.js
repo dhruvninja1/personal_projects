@@ -135,7 +135,7 @@ io.on('connection', (socket) => {
 
 
     socket.on('add channel message', (msg) => {
-        console.log(msg);
+        console.log("add" + msg);
         addChannelMessage = new messageObject("System", msg, "orange", "all", new Date().toLocaleTimeString());
         io.emit('add channel message', addChannelMessage);
         channels.push(msg);
