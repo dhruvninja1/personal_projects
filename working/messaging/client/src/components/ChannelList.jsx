@@ -8,8 +8,15 @@ function ChannelList(){
     const [messages, setMessages] = useState([]);
     const { socket, isConnected } = useSocket();
     const { serverValue } = useServerState();
+    
+    // Clear channels when server changes
+    useEffect(() => {
+        setMessages([]);
+    }, [serverValue]);
+    
     useEffect(() => {
         if (!socket){ console.log('bug'); return;}
+        
         const handleNewMessage = (newMessage) => {
             console.log("got channel" + newMessage.content);
             setMessages(prevMessages => [
@@ -17,13 +24,24 @@ function ChannelList(){
                 {...newMessage, id: Date.now()} 
             ]);
         };
-        console.log(socket);
-        socket.on('connect', () => {
+        
+        const handleConnect = () => {
             console.log("IMPORTANT connected to server");
-        });
+        };
+        
+        console.log(socket);
+        
+        // Check if already connected
+        if (socket.connected) {
+            console.log("IMPORTANT connected to server (already connected)");
+        }
+        
+        socket.on('connect', handleConnect);
         socket.on('add channel message', handleNewMessage);
         console.log("listening to add channel message");
+        
         return () => {
+            socket.off('connect', handleConnect);
             socket.off('add channel message', handleNewMessage);
         };
     }, [socket, serverValue, isConnected]);

@@ -35,7 +35,12 @@ const getSocket = (serverValue) => {
     globalSocket.on('connect', () => {
       console.log(`Connected to server on port ${serverValue}`);
       updateConnectionState(true);
-      // Don't emit username here - let the useEffect handle it
+      // Emit username immediately after connection if we have one and haven't emitted yet
+      if (lastEmittedUsername && lastEmittedUsername !== 'Anonymous' && !usernameEmittedForCurrentServer) {
+        globalSocket.emit('username message', lastEmittedUsername);
+        usernameEmittedForCurrentServer = true;
+        console.log(`Emitted username after connect: ${lastEmittedUsername}`);
+      }
     });
     globalSocket.on('disconnect', () => {
       console.log(`Disconnected from server on port ${serverValue}`);
