@@ -61,7 +61,7 @@ function AddServerButton(){
             <div style={{display: isDisplayed ? 'block' : 'none'}}>
                 <Overlay></Overlay>
                 <div style={{zIndex: 1000, position: 'fixed'}}>
-                    <button style={{zIndex: 1000}} className="border-2 border-gray-100 rounded-full p-2" onClick={handleAddServer}>+</button>
+                    <button style={{zIndex: 1000}} className="border-2 border-gray-100 rounded-full p-2" onClick={() => handleAddServer()}>+</button>
                     <input style={{zIndex: 1000}} className="border-2 border-gray-100 rounded-md p-2" type="text" placeholder="server port" value={serverPort} onChange={(e) => setServerPort(e.target.value)} />
                     <button style={{zIndex: 1000}} className="border-2 border-gray-100 rounded-full p-2" onClick={handleCreateServer}>+</button>
                     <input style={{zIndex: 1000}} className="border-2 border-gray-100 rounded-md p-2" type="text" placeholder="OR server name (create new server)" value={serverName} onChange={(e) => setServerName(e.target.value)} />
