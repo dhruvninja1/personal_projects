@@ -3,6 +3,7 @@ import { useSocket } from './socket';
 import ChannelButton from './ChannelButton';
 import AddChannelButton from './AddChannelButton';
 import { useServerState } from '../context/ServerContext.jsx';
+import PortReveal from './PortReveal.jsx';
 
 function ChannelList(){
     const [messages, setMessages] = useState([]);
@@ -48,6 +49,7 @@ function ChannelList(){
     return(
         <div className='p-2'>
             <div>
+                <PortReveal></PortReveal>
                 <AddChannelButton></AddChannelButton>
             </div>
             <div>

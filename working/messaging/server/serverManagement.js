@@ -2,9 +2,12 @@ const { randomInt } = require('crypto');
 const express = require('express');
 const app = express();
 const { exec } = require('child_process');
+const kill = require('kill-port');
 const cors = require('cors');
 const fs = require('fs');
 const PORT = 3002;
+
+serverDataFile = "./data/openservers.json"; 
 
 const https = require('https');
 app.use(cors({
@@ -13,7 +16,9 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
-openServers={3000: "dms", 434: "test"};
+
+openServers = JSON.parse(fs.readFileSync(serverDataFile, "utf8"));
+console.log(openServers);
 
 const options = {
     key: fs.readFileSync('../key/192.168.1.172+1-key.pem'),
@@ -22,30 +27,56 @@ const options = {
 
 userDataFile = "data/userData.json";
 users = JSON.parse(fs.readFileSync(userDataFile, "utf8"));
-console.log(users);
 
 
+
+
+exec(`node dmserver.js`)
+for (const server of openServers){
+    exec(`node server.js ${server.port} ${server.name}`);
+}
+
+function cleanup(){
+    for (const server of openServers){
+        kill(server.port, 'tcp');
+    }
+    kill(3002, 'tcp');
+}
 
 app.post('/createServer', (req, res) => {
     data = req.body;
-    serverName = body.serverName;
+    serverName = data.serverName;
     testport = randomInt(50000, 50500);
-    while (testport in openServers){
-        testport = randomInt(50000, 50500);
+    
+    // Find a unique port that doesn't exist in openServers
+    let portExists = true;
+    while (portExists) {
+        portExists = openServers.some(server => server.port === testport);
+        if (portExists) {
+            testport = randomInt(50000, 50500);
+        }
     }
+    
     exec(`node server.js ${testport} ${serverName}`);
-    res.send(testport);
-    openServers[testport] = serverName;
+    res.json({port : testport});
+    
+    // Add new server to the array
+    openServers.push({ name: serverName, port: testport });
+    fs.writeFileSync(serverDataFile, JSON.stringify(openServers, null, 4));
+    console.log(data);
+    console.log(openServers);
 });
 
 app.post('/joinServer', (req, res) => {
     body = req.body;
-    console.log(req);
-    port = body.port;
-    if (port in openServers){
-        res.json({status: 'success', serverName: openServers[port]});
-    }
-    else{
+    port = parseInt(body.port);
+    
+    // Find the server with matching port in the array
+    const server = openServers.find(server => server.port === port);
+    
+    if (server) {
+        res.json({status: 'success', serverName: server.name});
+    } else {
         res.json({status: 'failure', serverName: null});
     }
 });
@@ -73,4 +104,8 @@ server = https.createServer(options, app);
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`);
+    
 });
+
+process.on('SIGINT', cleanup); 
+process.on('SIGTERM', cleanup);
