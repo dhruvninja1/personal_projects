@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useAllServersState } from '../context/ServerContext';
+import { useAuth } from '../context/AuthContext';
 import Overlay from './Overlay';
 
 function AddServerButton(){
     const { addServer } = useAllServersState();
+    const { user } = useAuth();
     const [serverPort, setServerPort] = useState('');
     const [serverName, setServerName] = useState('');
     const [isDisplayed, setIsDisplayed] = useState(false);
@@ -22,7 +24,7 @@ function AddServerButton(){
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({port: port}),
+            body: JSON.stringify({port: port, email: user?.email}),
         });
         const data = await response.json();
         if (data.status === 'success'){

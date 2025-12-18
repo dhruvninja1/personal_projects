@@ -28,20 +28,26 @@ export const AllServersContext = createContext();
 export const useAllServersState = () => useContext(AllServersContext);
 
 export const AllServersProvider = ({ children }) => {
-    const [allServersValue, setAllServersValue] = useState([{serverPort: 3000, serverName: "dms"}]);
+    const [allServersValue, setAllServersValue] = useState([]);
 
     const updateAllServersValue = (newValue) => {
         setAllServersValue(newValue);
     };
 
     const addServer = (server) => {
-        setAllServersValue([...allServersValue, server]);
+        setAllServersValue(prev => [...prev, server]);
+    };
+
+    // Bulk set servers (replaces all existing servers)
+    const setServers = (servers) => {
+        setAllServersValue(servers);
     };
 
     const contextValue = {
         allServersValue,
         updateAllServersValue,
         addServer,
+        setServers,
     };
     return(
         <AllServersContext.Provider value={contextValue}>

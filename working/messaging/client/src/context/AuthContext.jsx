@@ -2,10 +2,9 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useUsernameState } from '../context/UsernameContext';
-import { AllServersContext, useAllServersState } from './ServerContext';
+import { useAllServersState } from './ServerContext';
 
 export const AuthContext = createContext();
-const [allServersValue, addServer] = useAllServersState();
 export const useAuth = () => useContext(AuthContext);
 
 async function createUserOnBackend(user){
@@ -17,32 +16,45 @@ async function createUserOnBackend(user){
       body: JSON.stringify({email: user.email, username: user.displayName}),
   });
 }
-async function getServers(user){
-   const response = await fetch('https://localhost:3002/getUserServers', {
-      method: 'POST',
-      headers: {
-          'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({email: user.email}),
-  });
-  data = await response.json();
-  for (item of data){
-    addServer({serverPort : })
-  }
-}
 
 export const AuthProvider = ({ children }) => {
   const { updateUsernameValue } = useUsernameState();
+  const { setServers } = useAllServersState();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  async function getServers(user) {
+    try {
+      const response = await fetch('https://localhost:3002/getUserServers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: user.email }),
+      });
+      const data = await response.json();
+      // data.servers is now [{name: "", port: int}, ...]
+      // Map to frontend format and set all at once
+      const formattedServers = data.servers.map(server => ({
+        serverPort: server.port,
+        serverName: server.name
+      }));
+      setServers(formattedServers);
+    } catch (error) {
+      console.error('Error fetching servers:', error);
+    }
+  }
   
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
-      console.log(user);
-      updateUsernameValue(user.displayName || user.email || 'Anonymous');
-      createUserOnBackend(user);
+      if (user) {
+        console.log(user);
+        updateUsernameValue(user.displayName || user.email || 'Anonymous');
+        createUserOnBackend(user);
+        getServers(user);
+      }
     });
 
     return () => unsubscribe();

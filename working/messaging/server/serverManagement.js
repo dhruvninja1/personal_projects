@@ -71,11 +71,22 @@ app.post('/createServer', (req, res) => {
 app.post('/joinServer', (req, res) => {
     body = req.body;
     port = parseInt(body.port);
+    const email = body.email;
     
     // Find the server with matching port in the array
     const server = openServers.find(server => server.port === port);
     
     if (server) {
+        // Add server to user's server list if email provided
+        if (email && userServerData[email]) {
+            // Check if user already has this server
+            const alreadyHas = userServerData[email].servers.some(s => s.port === port);
+            if (!alreadyHas) {
+                userServerData[email].servers.push({ name: server.name, port: port });
+                fs.writeFileSync(userServerDataFile, JSON.stringify(userServerData, null, 4));
+                console.log(`Added server ${server.name}:${port} to user ${email}`);
+            }
+        }
         res.json({status: 'success', serverName: server.name});
     } else {
         res.json({status: 'failure', serverName: null});
@@ -84,10 +95,22 @@ app.post('/joinServer', (req, res) => {
 
 app.post('/createUser', (req, res) => {
     body = req.body;
+    const isNewUser = !users[body.email];
+    
     users[body.email] = body.username;
     console.log("GOT USER " + body.email + " USERNAME: " + body.username);
     console.log(users);
     fs.writeFileSync(userDataFile, JSON.stringify(users, null, 2));
+    
+    // If new user, create entry in userServerData with DM access
+    if (isNewUser && !userServerData[body.email]) {
+        userServerData[body.email] = {
+            servers: [{ name: "dms", port: 3000 }]
+        };
+        fs.writeFileSync(userServerDataFile, JSON.stringify(userServerData, null, 4));
+        console.log("Created userServerData entry for new user:", body.email);
+    }
+    
     res.json({status: "success"});
 });
 
@@ -103,6 +126,16 @@ app.post('/addFriend', (req, res) => {
 
 app.post('/getUserServers', (req, res) => {
     body = req.body;
+    
+    // If user doesn't exist in userServerData, create entry with DM access
+    if (!userServerData[body.email]) {
+        userServerData[body.email] = {
+            servers: [{ name: "dms", port: 3000 }]
+        };
+        fs.writeFileSync(userServerDataFile, JSON.stringify(userServerData, null, 4));
+        console.log("Created userServerData entry for user:", body.email);
+    }
+    
     console.log(userServerData[body.email].servers);
     res.json({servers : userServerData[body.email].servers});
 });
@@ -111,8 +144,8 @@ server = https.createServer(options, app);
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`);
-    
-});
+    console.log(userServerData);
+}); 
 
 process.on('SIGINT', cleanup); 
 process.on('SIGTERM', cleanup);
