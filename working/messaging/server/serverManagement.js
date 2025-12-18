@@ -8,6 +8,7 @@ const fs = require('fs');
 const PORT = 3002;
 
 serverDataFile = "./data/openservers.json"; 
+userServerDataFile = "./data/userServerData.json";
 
 const https = require('https');
 app.use(cors({
@@ -28,7 +29,7 @@ const options = {
 userDataFile = "data/userData.json";
 users = JSON.parse(fs.readFileSync(userDataFile, "utf8"));
 
-
+userServerData = JSON.parse(fs.readFileSync(userServerDataFile, "utf8"));
 
 
 exec(`node dmserver.js`)
@@ -98,6 +99,12 @@ app.post('/addFriend', (req, res) => {
     else{
         res.json({status : 'fail', username : undefined});
     }
+});
+
+app.post('/getUserServers', (req, res) => {
+    body = req.body;
+    console.log(userServerData[body.email].servers);
+    res.json({servers : userServerData[body.email].servers});
 });
 
 server = https.createServer(options, app);

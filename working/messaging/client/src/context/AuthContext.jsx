@@ -2,10 +2,10 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useUsernameState } from '../context/UsernameContext';
+import { AllServersContext, useAllServersState } from './ServerContext';
 
 export const AuthContext = createContext();
-
-
+const [allServersValue, addServer] = useAllServersState();
 export const useAuth = () => useContext(AuthContext);
 
 async function createUserOnBackend(user){
@@ -17,11 +17,25 @@ async function createUserOnBackend(user){
       body: JSON.stringify({email: user.email, username: user.displayName}),
   });
 }
+async function getServers(user){
+   const response = await fetch('https://localhost:3002/getUserServers', {
+      method: 'POST',
+      headers: {
+          'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({email: user.email}),
+  });
+  data = await response.json();
+  for (item of data){
+    addServer({serverPort : })
+  }
+}
 
 export const AuthProvider = ({ children }) => {
   const { updateUsernameValue } = useUsernameState();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
