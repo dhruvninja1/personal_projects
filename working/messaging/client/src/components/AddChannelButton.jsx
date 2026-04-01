@@ -11,7 +11,7 @@ function AddChannelButton(){
     
     async function handleAddChannel(){
         if (serverValue == 3000){
-            const response = await fetch('https://localhost:3002/addFriend', {
+            const response = await fetch('${import.meta.env.VITE_API_URL}/addFriend', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

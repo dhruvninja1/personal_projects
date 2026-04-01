@@ -8,7 +8,7 @@ export const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 async function createUserOnBackend(user){
-  const response = await fetch('https://localhost:3002/createUser', {
+  const response = await fetch('${import.meta.env.VITE_API_URL}/createUser', {
       method: 'POST',
       headers: {
           'Content-Type': 'application/json',
@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }) => {
 
   async function getServers(user) {
     try {
-      const response = await fetch('https://localhost:3002/getUserServers', {
+      const response = await fetch('${import.meta.env.VITE_API_URL}/getUserServers', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

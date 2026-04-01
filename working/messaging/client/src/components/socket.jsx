@@ -27,9 +27,8 @@ const getSocket = (serverValue) => {
   }
   
   if (!globalSocket || globalSocket.disconnected) {
-    globalSocket = io(`https://localhost:${serverValue}`, {
+    globalSocket = io(`${import.meta.env.VITE_SOCKET_URL}:${serverValue}`, {
       transports: ['websocket', 'polling'],
-      secure: true
     });
     
     globalSocket.on('connect', () => {

@@ -10,7 +10,7 @@ const PORT = 3002;
 serverDataFile = "./data/openservers.json"; 
 userServerDataFile = "./data/userServerData.json";
 
-const https = require('https');
+const http = require('http');
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -20,11 +20,6 @@ app.use(express.json());
 
 openServers = JSON.parse(fs.readFileSync(serverDataFile, "utf8"));
 console.log(openServers);
-
-const options = {
-    key: fs.readFileSync('../key/192.168.1.172+1-key.pem'),
-    cert: fs.readFileSync('../key/192.168.1.172+1.pem')
-};
 
 userDataFile = "data/userData.json";
 users = JSON.parse(fs.readFileSync(userDataFile, "utf8"));
@@ -140,7 +135,7 @@ app.post('/getUserServers', (req, res) => {
     res.json({servers : userServerData[body.email].servers});
 });
 
-server = https.createServer(options, app);
+server = http.createServer(app);
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`);
