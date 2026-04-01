@@ -19,7 +19,7 @@ function AddServerButton(){
     async function handleAddServer(portOverride){
         const port = portOverride ?? parseInt(serverPort);
         console.log('Adding server:', port);
-        const response = await fetch('${import.meta.env.VITE_API_URL}/joinServer', {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/joinServer`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -40,7 +40,7 @@ function AddServerButton(){
 
     async function handleCreateServer(){
         console.log("creating server:", serverName);
-        const response = await fetch('${import.meta.env.VITE_API_URL}/createServer', {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/createServer`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
