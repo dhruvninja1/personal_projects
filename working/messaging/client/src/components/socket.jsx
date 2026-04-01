@@ -27,7 +27,8 @@ const getSocket = (serverValue) => {
   }
   
   if (!globalSocket || globalSocket.disconnected) {
-    globalSocket = io(`${import.meta.env.VITE_SOCKET_URL}:${serverValue}`, {
+    globalSocket = io(import.meta.env.VITE_SOCKET_URL, {
+      path: `/monkeychat/ws/${serverValue}/socket.io`,
       transports: ['websocket', 'polling'],
     });
     
