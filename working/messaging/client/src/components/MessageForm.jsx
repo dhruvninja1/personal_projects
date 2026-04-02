@@ -32,7 +32,7 @@ function MessageForm(){
     };
     
     return (
-        <div className="z-[60]">
+        <div className="relative z-[60]">
             {isEmojiPickerOpen && ( 
                 <div className="absolute bottom-full mb-2 z-50 right-0">
                     <Picker data={data} onEmojiSelect={handleSelect} />
