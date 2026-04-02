@@ -18,7 +18,7 @@ cd "$REPO_DIR/client" && npm install
 
 echo "=== Writing production .env ==="
 cat > "$REPO_DIR/client/.env.production" <<EOF
-VITE_API_URL=https://$DOMAIN/api
+VITE_API_URL=https://$DOMAIN/monkeychat/api
 VITE_SOCKET_URL=https://$DOMAIN
 EOF
 
