@@ -27,10 +27,17 @@ const getSocket = (serverValue) => {
   }
   
   if (!globalSocket || globalSocket.disconnected) {
-    globalSocket = io(import.meta.env.VITE_SOCKET_URL, {
-      path: `/monkeychat/ws/${serverValue}/socket.io`,
-      transports: ['websocket', 'polling'],
-    });
+    const prefix = import.meta.env.VITE_SOCKET_PATH_PREFIX;
+    if (prefix) {
+      globalSocket = io(import.meta.env.VITE_SOCKET_URL, {
+        path: `${prefix}/${serverValue}/socket.io`,
+        transports: ['websocket', 'polling'],
+      });
+    } else {
+      globalSocket = io(`${import.meta.env.VITE_SOCKET_URL}:${serverValue}`, {
+        transports: ['websocket', 'polling'],
+      });
+    }
     
     globalSocket.on('connect', () => {
       console.log(`Connected to server on port ${serverValue}`);

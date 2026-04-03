@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Message from './Message'
 import MessageForm from './MessageForm'
 import { useSocket } from './socket'
@@ -39,10 +39,16 @@ function MessageContainer(){
             socket.off('chat message', handleNewMessage);
         };
     }, [socket]);
+    const messagesEndRef = useRef(null);
+
     // Filter messages for current channel first
-    const filteredMessages = messages.filter(msg => 
+    const filteredMessages = messages.filter(msg =>
         msg.channel === channelValue || msg.channel === 'all' || msg.sender === channelValue
     );
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [filteredMessages]);
 
     return(
         <div>
@@ -56,6 +62,7 @@ function MessageContainer(){
                         color={msg.color}>
                     </Message>
                 ))}
+                <div ref={messagesEndRef} />
             </div>
             <MessageForm></MessageForm>
         </div>
