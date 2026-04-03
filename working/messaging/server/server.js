@@ -58,6 +58,8 @@ function sendAllData(socket){
 admin_key = "2bb80d537b1da3e38bd30361aa855686bde0eacd7162fef6a25fe97bf527a25b";
 
 users={};
+allUsernames = new Set();
+data.forEach(msg => { if (msg.sender && msg.sender !== 'System') allUsernames.add(msg.sender); });
 channels=['general'];
 
 
@@ -65,20 +67,17 @@ io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
     socket.on('username message', (message) =>{
-        msg = message; 
+        msg = message;
         users[socket.id] = {'username': msg, 'admin' : false, 'muted' : false};
+        allUsernames.add(msg);
         console.log(socket.id + " : " + users[socket.id].username);
         console.log(users[socket.id])
         for (let c in channels){
             const joinChannelMessage = new messageObject("System",`${channels[c]}`, "orange");
             socket.emit('add channel message', joinChannelMessage);
         }
-        
-        temp = [];
-        for (let u in users){
-            temp.push(users[u].username);
-        }
-        io.emit('user list', temp);
+
+        io.emit('user list', Array.from(allUsernames));
         sendAllData(socket);
     });
 
@@ -139,12 +138,6 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
         delete users[socket.id];
-        temp = [];
-        for (let u in users){
-            temp.push(users[u].username);
-        }
-        io.emit('user list', temp);
-
   });
 });
 
